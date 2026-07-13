@@ -19,7 +19,7 @@ function rateFmt(p: ValueFormatterParams) {
 
 function rateStyle(p: CellClassParams) {
   const v = p.value as number | null
-  if (v === null || v === undefined) return {}
+  if (v === null || v === undefined) return null
   if (v >= 95) return { color: '#16a34a', fontWeight: 700 }
   if (v >= 80) return { color: '#d97706', fontWeight: 700 }
   return { color: '#ef4444', fontWeight: 700 }
@@ -50,11 +50,11 @@ export default function LTVFTable({ rows, dark }: Props) {
     },
     { headerName: 'Equal',      field: 'equal',      width: 95,  type: 'numericColumn', valueFormatter: numFmt },
     { headerName: 'Diff',       field: 'diff',       width: 85,  type: 'numericColumn', valueFormatter: numFmt,
-      cellStyle: (p: CellClassParams) => p.value > 0 ? { color: '#d97706', fontWeight: 600 } : {} },
+      cellStyle: (p: CellClassParams) => p.value > 0 ? { color: '#d97706', fontWeight: 600 } : null },
     { headerName: 'Missing',    field: 'missing',    width: 95,  type: 'numericColumn', valueFormatter: numFmt,
-      cellStyle: (p: CellClassParams) => p.value > 0 ? { color: '#ef4444', fontWeight: 600 } : {} },
+      cellStyle: (p: CellClassParams) => p.value > 0 ? { color: '#ef4444', fontWeight: 600 } : null },
     { headerName: 'Unexpected', field: 'unexpected', width: 105, type: 'numericColumn', valueFormatter: numFmt,
-      cellStyle: (p: CellClassParams) => p.value > 0 ? { color: '#a855f7', fontWeight: 600 } : {} },
+      cellStyle: (p: CellClassParams) => p.value > 0 ? { color: '#a855f7', fontWeight: 600 } : null },
     { headerName: 'Source',     field: 'source',     width: 100, type: 'numericColumn', valueFormatter: numFmt },
     { headerName: 'Target',     field: 'target',     width: 100, type: 'numericColumn', valueFormatter: numFmt },
     { headerName: 'OOS Src',    field: 'oos_src',    width: 90,  type: 'numericColumn', valueFormatter: numFmt },
