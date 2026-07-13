@@ -9,23 +9,18 @@ function fmt(val: number | null): string {
   return val.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
 }
 
-function fmtPct(val: number | null): string {
-  if (val === null || val === undefined) return ''
-  return `${val > 0 ? '+' : ''}${val.toFixed(1)} %`
-}
-
 export default function KPICards({ rows }: Props) {
-  const totals = rows.filter(r => r.level === 0 && !r.is_group === false)
-  const totalNetMRP = rows.reduce((s, r) => s + (r.level === 0 ? (r.net_mrp ?? 0) : 0), 0)
-  const totalGlobal = rows.reduce((s, r) => s + (r.level === 0 ? (r.global_amount ?? 0) : 0), 0)
-  const totalDelta = rows.reduce((s, r) => s + (r.level === 0 ? (r.delta ?? 0) : 0), 0)
-  const totalRows = rows.filter(r => !r.is_group).length
+  const leafRows = rows.filter(r => !r.is_group)
+  const totalEqual = leafRows.reduce((s, r) => s + (r.equal ?? 0), 0)
+  const totalDiff = leafRows.reduce((s, r) => s + (r.diff ?? 0), 0)
+  const totalMissing = leafRows.reduce((s, r) => s + (r.missing ?? 0), 0)
+  const totalUnexpected = leafRows.reduce((s, r) => s + (r.unexpected ?? 0), 0)
 
   const cards = [
-    { label: 'Total Net MRP', value: fmt(totalNetMRP), color: 'bg-blue-50 border-blue-200' },
-    { label: 'Global Amount', value: fmt(totalGlobal), color: 'bg-green-50 border-green-200' },
-    { label: 'Delta', value: fmt(totalDelta), color: totalDelta < 0 ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-200' },
-    { label: 'Line Items', value: String(totalRows), color: 'bg-gray-50 border-gray-200' },
+    { label: 'Equal', value: fmt(totalEqual), color: 'bg-green-50 border-green-200' },
+    { label: 'Differences', value: fmt(totalDiff), color: totalDiff > 0 ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-200' },
+    { label: 'Missing', value: fmt(totalMissing), color: totalMissing > 0 ? 'bg-amber-50 border-amber-200' : 'bg-green-50 border-green-200' },
+    { label: 'Unexpected', value: fmt(totalUnexpected), color: totalUnexpected > 0 ? 'bg-purple-50 border-purple-200' : 'bg-green-50 border-green-200' },
   ]
 
   return (
