@@ -1,0 +1,36 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 13px;
+}
+
+/* AG Grid dark theme overrides */
+.dark .ag-theme-alpine {
+  --ag-background-color: #1e293b;
+  --ag-foreground-color: #e2e8f0;
+  --ag-border-color: #334155;
+  --ag-header-background-color: #0f172a;
+  --ag-header-foreground-color: #94a3b8;
+  --ag-odd-row-background-color: #1e293b;
+  --ag-row-hover-color: #334155;
+  --ag-selected-row-background-color: #1d4ed8;
+  --ag-range-selection-border-color: #3b82f6;
+  --ag-input-focus-border-color: #3b82f6;
+  --ag-secondary-border-color: #334155;
+  --ag-row-border-color: #334155;
+}
+
+/* Recharts dark text */
+.dark .recharts-cartesian-axis-tick-value {
+  fill: #94a3b8;
+}
+.dark .recharts-legend-item-text {
+  color: #94a3b8 !important;
+}
+.dark .recharts-cartesian-grid line {
+  stroke: #334155;
+}

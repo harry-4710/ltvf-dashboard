@@ -1,0 +1,7 @@
+# Render reads this to detect the service type and run command
+[build]
+  base    = "backend"
+  command = "pip install -r requirements.txt"
+
+[start]
+  command = "uvicorn main:app --host 0.0.0.0 --port $PORT"
