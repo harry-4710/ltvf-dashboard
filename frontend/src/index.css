@@ -34,3 +34,33 @@ body {
 .dark .recharts-cartesian-grid line {
   stroke: #334155;
 }
+
+/* ── Print / PDF export ─────────────────────────────────── */
+@media print {
+  .no-print { display: none !important; }
+
+  body { background: #fff !important; color: #000 !important; font-size: 11px; }
+
+  .dark, .dark * {
+    background: #fff !important;
+    color: #000 !important;
+    border-color: #ccc !important;
+  }
+
+  /* Force all card backgrounds to white */
+  [class*="bg-slate"], [class*="bg-blue"], [class*="bg-red"],
+  [class*="bg-green"], [class*="bg-amber"], [class*="bg-purple"],
+  [class*="bg-indigo"], [class*="bg-orange"] {
+    background: #fff !important;
+    color: #000 !important;
+  }
+
+  /* Expand to fill page */
+  .flex-1, .overflow-auto { overflow: visible !important; height: auto !important; }
+
+  /* Charts: keep visible but reduce size */
+  .recharts-responsive-container { width: 100% !important; }
+
+  /* Page break hints */
+  .rounded-xl { page-break-inside: avoid; }
+}

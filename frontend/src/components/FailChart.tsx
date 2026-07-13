@@ -4,11 +4,20 @@ import {
 } from 'recharts'
 import type { LTVFRow } from '../types/ltvf'
 
-interface Props { rows: LTVFRow[]; dark: boolean }
+interface Props {
+  rows: LTVFRow[]
+  dark: boolean
+  thresholds: { pass: number; warn: number }
+  selectedSection: string | null
+}
 
-export default function FailChart({ rows, dark }: Props) {
-  const failing = rows
-    .filter(r => !r.is_group && r.rate_pct !== null && r.rate_pct < 95)
+export default function FailChart({ rows, dark, thresholds, selectedSection }: Props) {
+  const filtered = selectedSection
+    ? rows.filter(r => r.full_path.startsWith(selectedSection))
+    : rows
+
+  const failing = filtered
+    .filter(r => !r.is_group && r.rate_pct !== null && r.rate_pct < thresholds.pass)
     .sort((a, b) => (a.rate_pct ?? 0) - (b.rate_pct ?? 0))
     .slice(0, 15)
 
@@ -18,7 +27,7 @@ export default function FailChart({ rows, dark }: Props) {
     rate: r.rate_pct ?? 0,
   }))
 
-  const color  = (rate: number) => rate >= 80 ? '#d97706' : '#dc2626'
+  const color  = (rate: number) => rate >= thresholds.warn ? '#d97706' : '#dc2626'
   const bg     = dark ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'
   const label  = dark ? 'text-slate-400' : 'text-gray-500'
   const grid   = dark ? '#334155' : '#e5e7eb'
@@ -27,10 +36,21 @@ export default function FailChart({ rows, dark }: Props) {
   const ttBdr  = dark ? '#334155' : '#e5e7eb'
   const ttText = dark ? '#e2e8f0' : '#111'
 
+  if (data.length === 0) return (
+    <div className={`rounded-xl border shadow-sm p-4 ${bg}`}>
+      <p className={`text-xs uppercase tracking-wider font-medium mb-2 ${label}`}>
+        Lowest Performing Tests
+      </p>
+      <p className={`text-sm ${dark ? 'text-green-400' : 'text-green-600'} font-medium`}>
+        ✅ All tests pass the {thresholds.pass}% threshold{selectedSection ? ` in "${selectedSection}"` : ''}
+      </p>
+    </div>
+  )
+
   return (
     <div className={`rounded-xl border shadow-sm p-4 ${bg}`}>
       <p className={`text-xs uppercase tracking-wider font-medium mb-3 ${label}`}>
-        Lowest Performing Tests (rate &lt; 95%)
+        Lowest Performing Tests (rate &lt; {thresholds.pass}%){selectedSection ? ` — ${selectedSection}` : ''}
       </p>
       <ResponsiveContainer width="100%" height={Math.max(180, data.length * 22)}>
         <BarChart data={data} layout="vertical" margin={{ left: 8, right: 40 }}>
