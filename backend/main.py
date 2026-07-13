@@ -26,7 +26,8 @@ async def upload_ltvf(file: UploadFile = File(...)):
     try:
         result = parse_excel(contents, file.filename)
     except Exception as exc:
-        raise HTTPException(status_code=422, detail=f"Failed to parse file: {exc}")
+        import traceback
+        raise HTTPException(status_code=422, detail=f"Failed to parse file: {exc}\n{traceback.format_exc()}")
     return result
 
 

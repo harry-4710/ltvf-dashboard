@@ -76,32 +76,25 @@ def _parse_group_row(raw_name: str) -> tuple[str, list[str]]:
 
 
 def parse_excel(file_bytes: bytes, filename: str) -> LTVFParseResult:
+    # Try header=0 first; if row 0 looks like a data row (numeric), try header=None
     df = pd.read_excel(io.BytesIO(file_bytes), header=0)
 
-    # Rename columns by position (headers span two rows in the export)
-    col_map = {
-        df.columns[0]:  "test_name",
-        df.columns[1]:  "rate_pct",
-        df.columns[2]:  "eval",
-        df.columns[3]:  "diff",
-        df.columns[4]:  "accept",
-        df.columns[5]:  "missing",
-        df.columns[6]:  "unexpected",
-        df.columns[7]:  "equal",
-        df.columns[8]:  "oos_src",
-        df.columns[9]:  "oos_trg",
-        df.columns[10]: "_local_lbl",
-        df.columns[11]: "local",
-        df.columns[12]: "_src_lbl",
-        df.columns[13]: "source",
-        df.columns[14]: "_src1_lbl",
-        df.columns[15]: "source1",
-        df.columns[16]: "_src2_lbl",
-        df.columns[17]: "source2",
-        df.columns[18]: "_tgt_lbl",
-        df.columns[19]: "target",
-    }
+    # Rename columns by position — map only the columns that exist
+    _col_names = [
+        "test_name", "rate_pct", "eval", "diff", "accept",
+        "missing", "unexpected", "equal", "oos_src", "oos_trg",
+        "_local_lbl", "local", "_src_lbl", "source",
+        "_src1_lbl", "source1", "_src2_lbl", "source2",
+        "_tgt_lbl", "target",
+    ]
+    col_map = {df.columns[i]: _col_names[i] for i in range(min(len(df.columns), len(_col_names)))}
     df.rename(columns=col_map, inplace=True)
+
+    # Ensure all expected numeric columns exist (fill missing ones with None)
+    for col in ["rate_pct", "diff", "accept", "missing", "unexpected", "equal",
+                "oos_src", "oos_trg", "local", "source", "source1", "source2", "target"]:
+        if col not in df.columns:
+            df[col] = None
 
     # Row 0 (index 0) is the grand-total row — extract summary then drop
     totals_row = df.iloc[0]
