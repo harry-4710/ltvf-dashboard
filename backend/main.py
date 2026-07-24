@@ -51,6 +51,11 @@ def sap_fetch():
         raise HTTPException(status_code=502, detail=f"Failed to fetch from SAP via BTP: {exc}\n{traceback.format_exc()}")
 
 
+@app.get("/")
+def root():
+    return {"service": "LTVF Dashboard API", "status": "ok", "version": "2.0.0"}
+
+
 @app.get("/api/health")
 def health():
     return {"status": "ok", "version": "2.0.0"}
