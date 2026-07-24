@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { Database, Upload, Sun, Moon, GitCompare, Clock, Printer } from 'lucide-react'
 import UploadZone from './components/UploadZone'
 import SummaryCards from './components/SummaryCards'
@@ -13,6 +13,8 @@ import TreemapChart from './components/TreemapChart'
 import ComparePanel from './components/ComparePanel'
 import UploadHistory from './components/UploadHistory'
 import { uploadLTVF } from './api/sapApi'
+import { checkSAPStatus, fetchFromSAP } from './api/btpApi'
+import { checkScheduledStatus, fetchScheduled } from './api/scheduledApi'
 import type { LTVFParseResult } from './types/ltvf'
 import { loadHistory, saveToHistory, deleteFromHistory, type HistoryEntry } from './utils/history'
 import './index.css'
@@ -49,6 +51,17 @@ export default function App() {
   const [history, setHistory]         = useState<HistoryEntry[]>(() => loadHistory())
   const [showHistory, setShowHistory] = useState(false)
   const [uploadedAt, setUploadedAt]   = useState<Date | null>(null)
+  const [sapAvailable, setSapAvailable] = useState(false)
+  const [scheduledAvailable, setScheduledAvailable] = useState(false)
+  const [lastExportTime, setLastExportTime] = useState<string | null>(null)
+
+  useEffect(() => {
+    checkSAPStatus().then(r => setSapAvailable(r.available)).catch(() => setSapAvailable(false))
+    checkScheduledStatus().then(r => {
+      setScheduledAvailable(r.available)
+      setLastExportTime(r.last_modified)
+    }).catch(() => setScheduledAvailable(false))
+  }, [])
 
   const handleFile = useCallback(async (file: File) => {
     setLoading(true)
@@ -63,6 +76,42 @@ export default function App() {
       setHistory(updated)
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Upload failed')
+    } finally {
+      setLoading(false)
+    }
+  }, [systemTag])
+
+  const handleFetchScheduled = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const result = await fetchScheduled()
+      setData(result)
+      setTab('overview')
+      setSelectedSection(null)
+      setUploadedAt(new Date())
+      const updated = saveToHistory({ filename: result.filename, timestamp: new Date().toISOString(), systemTag, data: result })
+      setHistory(updated)
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed to load SAP export from SharePoint')
+    } finally {
+      setLoading(false)
+    }
+  }, [systemTag])
+
+  const handleFetchFromSAP = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const result = await fetchFromSAP()
+      setData(result)
+      setTab('overview')
+      setSelectedSection(null)
+      setUploadedAt(new Date())
+      const updated = saveToHistory({ filename: result.filename, timestamp: new Date().toISOString(), systemTag, data: result })
+      setHistory(updated)
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed to fetch from SAP')
     } finally {
       setLoading(false)
     }
@@ -245,7 +294,16 @@ export default function App() {
         {/* ── Upload screen ─────────────────────────────────────────── */}
         {!data && !loading && (
           <div className="flex-1 flex items-center justify-center">
-            <UploadZone onFile={handleFile} loading={loading} dark={dark} />
+            <UploadZone
+              onFile={handleFile}
+              loading={loading}
+              dark={dark}
+              sapAvailable={sapAvailable}
+              onFetchFromSAP={handleFetchFromSAP}
+              scheduledAvailable={scheduledAvailable}
+              lastExportTime={lastExportTime}
+              onFetchScheduled={handleFetchScheduled}
+            />
           </div>
         )}
 
