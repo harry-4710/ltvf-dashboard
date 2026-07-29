@@ -138,7 +138,21 @@ async function getBtpDestination() {
 
 // ── Raw OData fetch ────────────────────────────────────────────────────────
 
+const LTVF_BACKEND_URL = process.env.LTVF_BACKEND_URL || "";
+
+function isBackendConfigured() {
+  return !!LTVF_BACKEND_URL;
+}
+
 async function fetchOData() {
+  // If neither direct nor BTP is configured, fall back to backend API
+  if (!isDirectConfigured() && !isBtpConfigured()) {
+    if (isBackendConfigured()) return fetchViaBackendApi();
+    throw new Error(
+      "SAP not configured. Set SAP_BASE_URL + SAP_USER + SAP_PASSWORD in mcp-server/.env"
+    );
+  }
+
   let oDataUrl, headers = {}, fetchOptions = {};
 
   if (isDirectConfigured()) {
@@ -402,21 +416,26 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
   try {
     if (name === "get_ltvf_status") {
-      const direct = isDirectConfigured();
-      const btp    = isBtpConfigured();
-      const mode   = direct ? "direct (Basic Auth)" : btp ? "BTP Destination Service" : "not configured";
+      const direct  = isDirectConfigured();
+      const btp     = isBtpConfigured();
+      const backend = isBackendConfigured();
+      const mode    = direct  ? "direct (Basic Auth)"
+                    : btp     ? "BTP Destination Service"
+                    : backend ? `backend fallback (${LTVF_BACKEND_URL})`
+                    : "not configured";
 
       const lines = [
         `SAP Connection Status`,
         `Mode: ${mode}`,
-        direct ? `SAP URL: ${SAP_BASE_URL}` : "",
-        direct ? `SAP User: ${SAP_USER}` : "",
-        direct ? `SAP Client: ${SAP_CLIENT}` : "",
-        btp ? `BTP Destination: ${SAP_DESTINATION_NAME}` : "",
+        direct  ? `SAP URL:    ${SAP_BASE_URL}` : "",
+        direct  ? `SAP User:   ${SAP_USER}` : "",
+        direct  ? `SAP Client: ${SAP_CLIENT}` : "",
+        btp     ? `BTP Destination: ${SAP_DESTINATION_NAME}` : "",
+        backend && !direct && !btp ? `Backend URL: ${LTVF_BACKEND_URL}` : "",
         ``,
-        direct || btp
-          ? "✅ Configuration found — run fetch_ltvf_data to retrieve live data."
-          : "❌ Not configured. Set SAP_BASE_URL, SAP_USER, SAP_PASSWORD in mcp-server/.env",
+        direct || btp || backend
+          ? "✅ Configuration found — run fetch_ltvf_data to retrieve data."
+          : "❌ Not configured. Set SAP_BASE_URL + SAP_USER + SAP_PASSWORD, or LTVF_BACKEND_URL in mcp-server/.env",
       ].filter(l => l !== "").join("\n");
 
       return { content: [{ type: "text", text: lines }] };
