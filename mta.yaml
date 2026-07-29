@@ -1,0 +1,46 @@
+_schema-version: "3.1"
+ID: ltvf-dashboard
+version: 1.0.0
+
+modules:
+
+  - name: ltvf-frontend
+    type: html5
+    path: frontend
+    build-parameters:
+      builder: custom
+      commands:
+        - npm ci
+        - npm run build
+      build-result: dist
+      supported-platforms: []
+
+  - name: ltvf-approuter
+    type: approuter.nodejs
+    path: approuter
+    parameters:
+      memory: 128M
+      disk-quota: 256M
+    requires:
+      - name: ltvf-html5-repo-rt
+      - name: ltvf-destination-svc
+
+resources:
+
+  - name: ltvf-html5-repo-host
+    type: org.cloudfoundry.managed-service
+    parameters:
+      service: html5-apps-repo
+      service-plan: app-host
+
+  - name: ltvf-html5-repo-rt
+    type: org.cloudfoundry.managed-service
+    parameters:
+      service: html5-apps-repo
+      service-plan: app-runtime
+
+  - name: ltvf-destination-svc
+    type: org.cloudfoundry.managed-service
+    parameters:
+      service: destination
+      service-plan: lite
