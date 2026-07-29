@@ -21,10 +21,27 @@ modules:
     parameters:
       memory: 256M
       disk-quota: 512M
-    requires:
-      - name: ltvf-destination-svc
     build-parameters:
       builder: npm
+      requires:
+        - name: ltvf-frontend
+          artifacts:
+            - dist/index.html
+            - dist/assets
+          target-path: dist
+    requires:
+      - name: ltvf-destination-svc
+
+  - name: ltvf-backend
+    type: python.cflinuxfs4
+    path: backend
+    parameters:
+      memory: 256M
+      disk-quota: 1024M
+    build-parameters:
+      builder: custom
+      commands: []
+      supported-platforms: []
 
 resources:
 
