@@ -1,0 +1,15 @@
+---
+applications:
+  - name: ltvf-approuter
+    memory: 256M
+    disk_quota: 512M
+    instances: 1
+    buildpacks:
+      - nodejs_buildpack
+    command: node node_modules/@sap/approuter/approuter.js
+    health-check-type: http
+    health-check-http-endpoint: /
+    services:
+      - ltvf-destination-svc
+    env:
+      ALLOWED_ORIGINS: "*"
