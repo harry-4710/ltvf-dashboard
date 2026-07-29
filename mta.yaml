@@ -14,7 +14,8 @@ modules:
       requires:
         - name: ltvf-frontend
           artifacts:
-            - dist/**
+            - dist/index.html
+            - dist/assets/
           target-path: dist
     requires:
       - name: ltvf-destination-svc
