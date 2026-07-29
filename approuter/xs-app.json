@@ -1,5 +1,5 @@
 {
-  "welcomeFile": "/index.html",
+  "welcomeFile": "/ltvfdashboard/index.html",
   "authenticationMethod": "none",
   "routes": [
     {
@@ -8,8 +8,14 @@
       "authenticationType": "none"
     },
     {
+      "source": "^/ltvfdashboard/(.*)$",
+      "target": "/ltvfdashboard/$1",
+      "service": "html5-apps-repo-rt",
+      "authenticationType": "none"
+    },
+    {
       "source": "^(.*)$",
-      "target": "$1",
+      "target": "/ltvfdashboard/$1",
       "service": "html5-apps-repo-rt",
       "authenticationType": "none"
     }

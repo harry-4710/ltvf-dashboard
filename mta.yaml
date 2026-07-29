@@ -18,6 +18,8 @@ modules:
       - name: ltvf-html5-repo-host
         parameters:
           content-target: true
+    parameters:
+      app-name: ltvfdashboard
 
   - name: ltvf-approuter
     type: approuter.nodejs
@@ -25,9 +27,13 @@ modules:
     parameters:
       memory: 128M
       disk-quota: 256M
+      keep-existing-routes: true
+    properties:
+      TENANT_HOST_PATTERN: "^(.*)-${default-uri}"
     requires:
       - name: ltvf-html5-repo-rt
       - name: ltvf-destination-svc
+      - name: ltvf-html5-repo-host
 
 resources:
 
