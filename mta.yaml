@@ -28,8 +28,6 @@ modules:
       memory: 128M
       disk-quota: 256M
       keep-existing-routes: true
-    properties:
-      TENANT_HOST_PATTERN: "^(.*)-${default-uri}"
     requires:
       - name: ltvf-html5-repo-rt
       - name: ltvf-destination-svc
