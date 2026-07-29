@@ -1,0 +1,14 @@
+---
+applications:
+  - name: ltvf-backend
+    memory: 256M
+    disk_quota: 512M
+    instances: 1
+    buildpacks:
+      - python_buildpack
+    command: uvicorn main:app --host 0.0.0.0 --port $PORT
+    health-check-type: http
+    health-check-http-endpoint: /api/health
+    env:
+      USE_MOCK_SCHEDULED: "true"
+      ALLOWED_ORIGINS: "*"
