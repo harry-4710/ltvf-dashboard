@@ -4,7 +4,7 @@
     {
       "label": "Start Backend",
       "type": "shell",
-      "command": "source .venv/bin/activate && uvicorn main:app --reload --port 8000",
+      "command": "source .venv/bin/activate && PORT=$(python3 -c \"import socket; s=socket.socket(); s.bind(('',0)); p=s.getsockname()[1]; s.close(); print(p)\") && uvicorn main:app --reload --port $PORT",
       "options": {
         "cwd": "${workspaceFolder}/backend"
       },
