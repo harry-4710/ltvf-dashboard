@@ -21,14 +21,12 @@ modules:
     parameters:
       memory: 256M
       disk-quota: 512M
-    build-parameters:
-      builder: custom
-      commands:
-        - npm install --production
-        - cp -r ../frontend/dist ./dist
-      supported-platforms: []
     requires:
       - name: ltvf-destination-svc
+    build-parameters:
+      builder: npm
+      ignore:
+        - dist/
 
 resources:
 
