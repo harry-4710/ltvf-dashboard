@@ -35,6 +35,12 @@ echo ""
 echo "▶ Setting up Python backend..."
 cd "$PROJECT_DIR/backend"
 
+# Remove any broken venv from a previous failed attempt
+if [ -d ".venv" ]; then
+  echo "  Removing existing .venv..."
+  rm -rf .venv
+fi
+
 # Create virtual environment
 python3 -m venv .venv
 source .venv/bin/activate
