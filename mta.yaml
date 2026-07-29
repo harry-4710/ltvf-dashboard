@@ -4,6 +4,25 @@ version: 1.0.0
 
 modules:
 
+  - name: ltvf-approuter
+    type: approuter.nodejs
+    path: approuter
+    parameters:
+      memory: 256M
+      disk-quota: 512M
+    build-parameters:
+      requires:
+        - name: ltvf-frontend
+          artifacts:
+            - dist/
+          target-path: dist
+    requires:
+      - name: ltvf-destination-svc
+    provides:
+      - name: ltvf-approuter-url
+        properties:
+          url: ${default-url}
+
   - name: ltvf-frontend
     type: html5
     path: frontend
@@ -14,38 +33,8 @@ modules:
         - npm run build
       build-result: dist
       supported-platforms: []
-    requires:
-      - name: ltvf-html5-repo-host
-        parameters:
-          content-target: true
-    parameters:
-      app-name: ltvfdashboard
-
-  - name: ltvf-approuter
-    type: approuter.nodejs
-    path: approuter
-    parameters:
-      memory: 128M
-      disk-quota: 256M
-      keep-existing-routes: true
-    requires:
-      - name: ltvf-html5-repo-rt
-      - name: ltvf-destination-svc
-      - name: ltvf-html5-repo-host
 
 resources:
-
-  - name: ltvf-html5-repo-host
-    type: org.cloudfoundry.managed-service
-    parameters:
-      service: html5-apps-repo
-      service-plan: app-host
-
-  - name: ltvf-html5-repo-rt
-    type: org.cloudfoundry.managed-service
-    parameters:
-      service: html5-apps-repo
-      service-plan: app-runtime
 
   - name: ltvf-destination-svc
     type: org.cloudfoundry.managed-service
