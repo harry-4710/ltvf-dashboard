@@ -209,10 +209,17 @@ async function fetchOData() {
 // ── Fallback: call our own FastAPI backend (already has BTP logic) ─────────
 
 async function fetchViaBackendApi() {
-  const BACKEND_URL = process.env.LTVF_BACKEND_URL || "https://ltvf-backend.cfapps.us10-003.hana.ondemand.com";
-  const data = await fetchJson(`${BACKEND_URL}/api/sap/fetch`);
-  // Backend returns LTVFParseResult — convert to OData-like format for unified mapper
-  return { _fromBackend: true, data };
+  const base = LTVF_BACKEND_URL.replace(/\/$/, "");
+
+  // Try live SAP fetch first; fall back to scheduled (mock) data
+  try {
+    const live = await fetchJson(`${base}/api/sap/fetch`);
+    return { _fromBackend: true, data: live };
+  } catch {
+    // SAP not configured on backend — use scheduled/mock data
+    const scheduled = await fetchJson(`${base}/api/scheduled/fetch`);
+    return { _fromBackend: true, data: scheduled };
+  }
 }
 
 // ── OData → structured result ──────────────────────────────────────────────
