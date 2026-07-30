@@ -65,6 +65,11 @@ echo "  ✔ MTA archive built: mta_archives/ltvf-dashboard_1.0.0.mtar"
 echo "▶ Deploying to CF..."
 cf deploy mta_archives/ltvf-dashboard_1.0.0.mtar --version-rule ALL
 
+# Ensure both apps are running after deploy
+echo "▶ Ensuring all apps are running..."
+cf start ltvf-backend 2>/dev/null || true
+cf start ltvf-approuter 2>/dev/null || true
+
 echo ""
 echo "════════════════════════════════════════"
 echo "  Deploy complete!"
