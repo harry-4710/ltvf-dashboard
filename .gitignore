@@ -9,3 +9,7 @@ dist/
 
 # Logs
 *.log
+
+# CF credentials (never commit)
+.cf-credentials
+mta_archives/
