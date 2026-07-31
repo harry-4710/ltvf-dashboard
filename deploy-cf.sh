@@ -70,6 +70,18 @@ echo "▶ Ensuring all apps are running..."
 cf start ltvf-backend 2>/dev/null || true
 cf start ltvf-approuter 2>/dev/null || true
 
+# Wait for backend to be healthy
+echo "▶ Waiting for backend to start..."
+for i in $(seq 1 12); do
+  STATUS=$(cf app ltvf-backend | grep "#0" | awk '{print $2}')
+  if [ "$STATUS" = "running" ]; then
+    echo "  ✔ Backend is running"
+    break
+  fi
+  echo "  ... waiting ($i/12)"
+  sleep 5
+done
+
 echo ""
 echo "════════════════════════════════════════"
 echo "  Deploy complete!"
