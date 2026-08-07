@@ -64,3 +64,11 @@ body {
   /* Page break hints */
   .rounded-xl { page-break-inside: avoid; }
 }
+
+/* SAC Analytics Cloud embed */
+.sac-embed {
+  width: 100%;
+  height: calc(100vh - 120px);
+  border: none;
+  display: block;
+}

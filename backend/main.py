@@ -4,6 +4,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from excel_parser import parse_excel, LTVFParseResult
 from btp_client import fetch_ltvf_via_btp, is_btp_configured
 from sharepoint_client import fetch_ltvf_from_sharepoint, is_sharepoint_configured, get_file_info
+from settings import settings_router
+from result_history import results_router
 
 app = FastAPI(title="LTVF Dashboard API", version="2.0.0")
 
@@ -15,9 +17,12 @@ _origins = [o.strip() for o in _origins_env.split(",")] if _origins_env != "*" e
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_origins,
-    allow_methods=["GET", "POST"],
+    allow_methods=["GET", "POST", "PUT"],
     allow_headers=["*"],
 )
+
+app.include_router(settings_router)
+app.include_router(results_router)
 
 
 @app.post("/api/upload", response_model=LTVFParseResult)

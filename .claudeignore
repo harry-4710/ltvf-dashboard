@@ -1,0 +1,15 @@
+# Regenerable — never need Claude to read these
+node_modules/
+dist/
+__pycache__/
+.vercel/
+mta_archives/
+
+# Logs
+*.log
+
+# Large ZIP exports
+workzone/*.zip
+
+# CF credentials
+.cf-credentials

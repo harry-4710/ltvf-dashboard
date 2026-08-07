@@ -6,25 +6,11 @@
       "title": "LTVF Cloud Dashboard",
       "subTitle": "SAP Migration Test Results",
       "icon": "sap-icon://chart-bar",
-      "description": "Visualise CNVLTVF3 migration test results — pass/warn/fail breakdowns, treemap, drill-down table, and direct SAP data fetch.",
-      "additionalInformation": "SAPUI5.Component=ltvf.dashboard",
-      "applicationType": "URL",
+      "description": "Visualise CNVLTVF3 migration test results — pass/warn/fail breakdowns, treemap, and drill-down table",
       "url": "https://d73dca5etrial-dev-ltvf-approuter.cfapps.us10-003.hana.ondemand.com",
       "navigationComponent": {
         "type": "URL",
         "url": "https://d73dca5etrial-dev-ltvf-approuter.cfapps.us10-003.hana.ondemand.com"
-      },
-      "crossNavigation": {
-        "inbounds": {
-          "ltvf-dashboard": {
-            "semanticObject": "LTVFDashboard",
-            "action": "display",
-            "title": "LTVF Cloud Dashboard",
-            "subTitle": "SAP Migration Test Results",
-            "icon": "sap-icon://chart-bar",
-            "displayName": "LTVF Cloud Dashboard"
-          }
-        }
       }
     }
   ],
@@ -33,17 +19,7 @@
       "id": "ltvf.catalog",
       "title": "LTVF Tools",
       "tiles": [
-        {
-          "id": "ltvf.dashboard.tile",
-          "tileType": "sap.ushell.ui.tile.StaticTile",
-          "properties": {
-            "title": "LTVF Cloud Dashboard",
-            "subtitle": "SAP Migration Test Results",
-            "info": "CNVLTVF3 pass/warn/fail visualization",
-            "icon": "sap-icon://chart-bar",
-            "targetURL": "#LTVFDashboard-display"
-          }
-        }
+        { "id": "ltvf.dashboard" }
       ]
     }
   ],
@@ -52,26 +28,7 @@
       "id": "ltvf.group",
       "title": "SAP Migration",
       "tiles": [
-        {
-          "id": "ltvf.dashboard.tile"
-        }
-      ]
-    }
-  ],
-  "pages": [
-    {
-      "id": "ltvf.page",
-      "title": "LTVF Dashboard",
-      "sections": [
-        {
-          "id": "ltvf.section",
-          "title": "Migration Quality",
-          "tiles": [
-            {
-              "id": "ltvf.dashboard.tile"
-            }
-          ]
-        }
+        { "id": "ltvf.dashboard" }
       ]
     }
   ]

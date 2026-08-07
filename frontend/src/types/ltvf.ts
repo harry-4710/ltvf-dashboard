@@ -40,3 +40,15 @@ export interface LTVFParseResult {
   rows: LTVFRow[]
   sections: string[]
 }
+
+export interface ResultEntry {
+  id: string
+  system_tag: string
+  uploaded_at: string
+  filename: string
+  overall_rate: number
+  pass_count: number
+  warn_count: number
+  fail_count: number
+  total_rows: number
+}

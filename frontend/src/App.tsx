@@ -1,5 +1,5 @@
-import { useState, useCallback, useEffect } from 'react'
-import { Database, Upload, Sun, Moon, GitCompare, Clock, Printer } from 'lucide-react'
+import { useState, useCallback, useEffect, useRef } from 'react'
+import { Database, Upload, Sun, Moon, GitCompare, Clock, Printer, FileDown, Mail, TrendingUp } from 'lucide-react'
 import UploadZone from './components/UploadZone'
 import SummaryCards from './components/SummaryCards'
 import RateDonut from './components/RateDonut'
@@ -15,11 +15,16 @@ import UploadHistory from './components/UploadHistory'
 import { uploadLTVF } from './api/sapApi'
 import { checkSAPStatus, fetchFromSAP } from './api/btpApi'
 import { checkScheduledStatus, fetchScheduled } from './api/scheduledApi'
+import { getSettings, saveSettings } from './api/settingsApi'
+import { saveResult } from './api/resultsApi'
+import SACEmbed from './components/SACEmbed'
 import type { LTVFParseResult } from './types/ltvf'
 import { loadHistory, saveToHistory, deleteFromHistory, type HistoryEntry } from './utils/history'
+import { exportToExcel } from './utils/exportToExcel'
+import { generateHTMLReport } from './utils/generateReport'
 import './index.css'
 
-type Tab = 'overview' | 'table' | 'treemap' | 'compare'
+type Tab = 'overview' | 'table' | 'treemap' | 'compare' | 'analytics'
 
 function useTheme() {
   const [dark, setDark] = useState<boolean>(() => {
@@ -44,7 +49,9 @@ export default function App() {
   const [compareLoading, setCompareLoading] = useState(false)
   const [error, setError]             = useState<string | null>(null)
   const [tab, setTab]                 = useState<Tab>('overview')
-  const [selectedSection, setSelectedSection] = useState<string | null>(null)
+  const [selectedSection, setSelectedSection] = useState<string | null>(() =>
+    localStorage.getItem('ltvf-section')
+  )
   const [thresholds, setThresholds]   = useState({ pass: 95, warn: 80 })
   const [systemTag, setSystemTag]     = useState('')
   const [showTagInput, setShowTagInput] = useState(false)
@@ -63,6 +70,35 @@ export default function App() {
     }).catch(() => setScheduledAvailable(false))
   }, [])
 
+  useEffect(() => {
+    if (selectedSection === null) {
+      localStorage.removeItem('ltvf-section')
+    } else {
+      localStorage.setItem('ltvf-section', selectedSection)
+    }
+  }, [selectedSection])
+
+  useEffect(() => {
+    getSettings(systemTag)
+      .then(t => setThresholds(t))
+      .catch(() => {
+        const raw = localStorage.getItem('ltvf-thresholds')
+        if (raw) {
+          try { setThresholds(JSON.parse(raw)) } catch { /* keep defaults */ }
+        }
+      })
+  }, [systemTag])
+
+  const _saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => {
+    if (_saveTimer.current) clearTimeout(_saveTimer.current)
+    _saveTimer.current = setTimeout(() => {
+      localStorage.setItem('ltvf-thresholds', JSON.stringify(thresholds))
+      saveSettings(systemTag, thresholds).catch(() => { /* best-effort */ })
+    }, 600)
+    return () => { if (_saveTimer.current) clearTimeout(_saveTimer.current) }
+  }, [thresholds, systemTag])
+
   const handleFile = useCallback(async (file: File) => {
     setLoading(true)
     setError(null)
@@ -74,6 +110,7 @@ export default function App() {
       setUploadedAt(new Date())
       const updated = saveToHistory({ filename: result.filename, timestamp: new Date().toISOString(), systemTag, data: result })
       setHistory(updated)
+      saveResult(systemTag, result).catch(() => { /* best-effort */ })
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Upload failed')
     } finally {
@@ -92,6 +129,7 @@ export default function App() {
       setUploadedAt(new Date())
       const updated = saveToHistory({ filename: result.filename, timestamp: new Date().toISOString(), systemTag, data: result })
       setHistory(updated)
+      saveResult(systemTag, result).catch(() => { /* best-effort */ })
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Failed to load SAP export from SharePoint')
     } finally {
@@ -110,6 +148,7 @@ export default function App() {
       setUploadedAt(new Date())
       const updated = saveToHistory({ filename: result.filename, timestamp: new Date().toISOString(), systemTag, data: result })
       setHistory(updated)
+      saveResult(systemTag, result).catch(() => { /* best-effort */ })
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Failed to fetch from SAP')
     } finally {
@@ -149,12 +188,14 @@ export default function App() {
   }
 
   const handlePrint = () => window.print()
+  const handleExport = () => { if (data) exportToExcel(data) }
 
   const tabLabels: { key: Tab; label: string }[] = [
-    { key: 'overview', label: 'Overview' },
-    { key: 'treemap',  label: 'Treemap' },
-    { key: 'table',    label: 'Detail Table' },
-    { key: 'compare',  label: 'Compare' },
+    { key: 'overview',   label: 'Overview' },
+    { key: 'treemap',    label: 'Treemap' },
+    { key: 'table',      label: 'Detail Table' },
+    { key: 'compare',    label: 'Compare' },
+    { key: 'analytics',  label: 'Analytics' },
   ]
 
   return (
@@ -256,6 +297,15 @@ export default function App() {
                   <Printer size={15} />
                 </button>
 
+                {/* Export to Excel */}
+                <button
+                  onClick={handleExport}
+                  className="text-blue-300 hover:text-white transition p-1"
+                  title="Export to Excel"
+                >
+                  <FileDown size={15} />
+                </button>
+
                 {/* New upload */}
                 <button
                   onClick={() => { setData(null); setCompareData(null); setError(null); setSelectedSection(null) }}
@@ -271,6 +321,15 @@ export default function App() {
             {data && (
               <ThresholdPanel thresholds={thresholds} onChange={setThresholds} dark={dark} />
             )}
+
+            {/* Analytics shortcut (always visible) */}
+            <button
+              onClick={() => setTab('analytics')}
+              className={`p-1.5 rounded-lg transition text-white ${tab === 'analytics' ? 'bg-white/30' : 'bg-white/10 hover:bg-white/20'}`}
+              title="Analytics (SAC embed)"
+            >
+              <TrendingUp size={15} />
+            </button>
 
             {/* Dark mode */}
             <button
@@ -292,7 +351,7 @@ export default function App() {
         )}
 
         {/* ── Upload screen ─────────────────────────────────────────── */}
-        {!data && !loading && (
+        {!data && !loading && tab !== 'analytics' && (
           <div className="flex-1 flex items-center justify-center">
             <UploadZone
               onFile={handleFile}
@@ -304,6 +363,13 @@ export default function App() {
               lastExportTime={lastExportTime}
               onFetchScheduled={handleFetchScheduled}
             />
+          </div>
+        )}
+
+        {/* ── Analytics tab (no data required) ─────────────────────── */}
+        {!data && !loading && tab === 'analytics' && (
+          <div className="flex-1 flex flex-col min-h-0">
+            <SACEmbed dark={dark} />
           </div>
         )}
 
@@ -391,6 +457,13 @@ export default function App() {
                     </p>
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* Analytics tab */}
+            {tab === 'analytics' && (
+              <div className="flex-1 flex flex-col min-h-0">
+                <SACEmbed dark={dark} />
               </div>
             )}
           </div>
