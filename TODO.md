@@ -18,10 +18,10 @@ Last updated: 2026-08-07
 
 ## Backlog / Nice-to-Have
 
-- [ ] **CDM tile icon** — provide a custom 56×56 PNG icon for the Work Zone tile instead of the generic `sap-icon://chart-bar`
-- [ ] **Keyboard shortcuts** — `E` to export, `P` to print, `T` to toggle theme
-- [ ] **Treemap drill-down** — clicking a treemap cell should filter the Detail Table to matching rows
-- [ ] **Dark/light print stylesheet** — current print CSS forces white background; validate dark-mode print output
+- [x] **CDM tile icon** — custom 56×56 SVG icon (`public/ltvf-tile-icon.svg`) for the Work Zone tile; `cdm.json` updated to reference it (v2.1.0)
+- [x] **Keyboard shortcuts** — `E` to export, `P` to print, `T` to toggle theme — global `keydown` listener in `App.tsx` (v2.1.0)
+- [x] **Treemap drill-down** — clicking a treemap cell now filters the Detail Table to matching rows and switches to the table tab (v2.1.0)
+- [x] **Dark/light print stylesheet** — `print-color-adjust: exact`, Recharts SVG text forced black, AG Grid print overrides, selective dark reset (v2.1.0)
 
 ## Done (recent)
 

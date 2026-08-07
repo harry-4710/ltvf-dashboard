@@ -2,9 +2,19 @@
 
 All notable changes to the LTVF Cloud Dashboard are documented here.
 
+## [2.1.0] — 2026-08-07
+
+### Added
+
+- **Keyboard shortcuts** — global `keydown` listener in `App.tsx`; `E` exports to Excel, `P` prints, `T` toggles dark/light theme. Skipped when focus is inside an input field. Button tooltips updated to show shortcut keys (`[E]`, `[P]`, `[T]`).
+- **Treemap drill-down** — clicking a cell in `TreemapChart` sets `selectedSection` to the cell name and switches to the Detail Table tab. Hint text shown above the chart. `onCellClick` prop added to `TreemapChart`.
+- **Custom CDM tile icon** — `frontend/public/ltvf-tile-icon.svg` (56×56, SAP-blue background with pass/warn/fail bars); `workzone/cdm.json` updated to reference it via the CF approuter URL.
+- **Improved print stylesheet** (`index.css`) — added `print-color-adjust: exact` so chart colours survive PDF export; Recharts SVG text and axis ticks forced to black; AG Grid print overrides for white background/black text; replaced blunt `.dark *` reset with targeted surface selectors to avoid nuking chart fill colours.
+
 ## [2.0.0] — 2026-08-07
 
 ### Added
+
 - **SAP Analytics Cloud embed** — new Analytics tab with `SACEmbed` component; reads `VITE_SAC_STORY_URL` env var; shows a branded configuration placeholder when unset
 - **Result history persistence** — every upload/fetch auto-saves the full `LTVFParseResult` to SQLite (`backend/result_history.db`) via `POST /api/results`
   - New backend module: `backend/result_history.py` — `POST /api/results`, `GET /api/results/{system}`, `GET /api/results/{system}/{date}`
@@ -17,6 +27,7 @@ All notable changes to the LTVF Cloud Dashboard are documented here.
 ## [1.4.0] — 2026-08-07
 
 ### Added
+
 - **Threshold persistence to backend** — pass/warn thresholds now saved to a SQLite database on Render via `/api/settings`
   - New backend module: `backend/settings.py` — SQLite-backed GET/PUT endpoints keyed by system tag
   - New frontend module: `frontend/src/api/settingsApi.ts` — `getSettings` / `saveSettings` via axios
@@ -27,6 +38,7 @@ All notable changes to the LTVF Cloud Dashboard are documented here.
 ## [1.3.0] — 2026-08-07
 
 ### Added
+
 - **Excel Export** — `FileDown` icon button in header toolbar triggers client-side XLSX download via SheetJS
   - Two-sheet workbook: `Summary` (aggregates) + `Detail Rows` (full `LTVFRow` array)
   - New utility: `frontend/src/utils/exportToExcel.ts`
@@ -35,6 +47,7 @@ All notable changes to the LTVF Cloud Dashboard are documented here.
 ## [1.2.0] — 2026-08-07
 
 ### Added
+
 - **SAP Build Work Zone CDM 3.0 integration** — handoff package for Work Zone admin
   - `workzone/cdm.json`: CDM descriptor registering the dashboard as a Fiori Launchpad tile
   - `workzone/README.md`: step-by-step import guide for the Work Zone administrator
@@ -43,6 +56,7 @@ All notable changes to the LTVF Cloud Dashboard are documented here.
 ## [1.1.0] — Prior
 
 ### Added
+
 - Upload history (localStorage) with load/delete
 - Compare mode (`ComparePanel`) for diffing two LTVF exports
 - Treemap visualisation (`TreemapChart`)
@@ -53,6 +67,7 @@ All notable changes to the LTVF Cloud Dashboard are documented here.
 ## [1.0.0] — Initial release
 
 ### Added
+
 - Excel upload → FastAPI parse → React dashboard
 - `SummaryCards`, `RateDonut`, `SectionChart`, `VolumeChart`, `FailChart`, `LTVFTable`
 - Pass / Warn / Fail classification with configurable thresholds

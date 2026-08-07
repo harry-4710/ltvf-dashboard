@@ -190,6 +190,19 @@ export default function App() {
   const handlePrint = () => window.print()
   const handleExport = () => { if (data) exportToExcel(data) }
 
+  // Global keyboard shortcuts — skip when focus is inside an input/textarea
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement).tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return
+      if (e.key === 'e' || e.key === 'E') { if (data) exportToExcel(data) }
+      if (e.key === 'p' || e.key === 'P') { window.print() }
+      if (e.key === 't' || e.key === 'T') { toggle() }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [data, toggle])
+
   const tabLabels: { key: Tab; label: string }[] = [
     { key: 'overview',   label: 'Overview' },
     { key: 'treemap',    label: 'Treemap' },
@@ -292,7 +305,7 @@ export default function App() {
                 <button
                   onClick={handlePrint}
                   className="text-blue-300 hover:text-white transition p-1"
-                  title="Print / Export PDF"
+                  title="Print / Export PDF [P]"
                 >
                   <Printer size={15} />
                 </button>
@@ -301,7 +314,7 @@ export default function App() {
                 <button
                   onClick={handleExport}
                   className="text-blue-300 hover:text-white transition p-1"
-                  title="Export to Excel"
+                  title="Export to Excel [E]"
                 >
                   <FileDown size={15} />
                 </button>
@@ -335,7 +348,7 @@ export default function App() {
             <button
               onClick={toggle}
               className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition text-white"
-              title={dark ? 'Light mode' : 'Dark mode'}
+              title={dark ? 'Light mode [T]' : 'Dark mode [T]'}
             >
               {dark ? <Sun size={15} /> : <Moon size={15} />}
             </button>
@@ -422,6 +435,10 @@ export default function App() {
                   dark={dark}
                   thresholds={thresholds}
                   selectedSection={selectedSection}
+                  onCellClick={(section) => {
+                    setSelectedSection(section)
+                    setTab('table')
+                  }}
                 />
               </div>
             )}

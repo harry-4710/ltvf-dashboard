@@ -39,9 +39,19 @@ body {
 @media print {
   .no-print { display: none !important; }
 
+  /* Force colour rendering — retains chart colours in PDF */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
   body { background: #fff !important; color: #000 !important; font-size: 11px; }
 
-  .dark, .dark * {
+  /* Dark-mode overrides — only reset non-chart surfaces */
+  .dark .rounded-xl,
+  .dark .bg-slate-800,
+  .dark .bg-slate-900,
+  .dark .bg-slate-950 {
     background: #fff !important;
     color: #000 !important;
     border-color: #ccc !important;
@@ -53,6 +63,26 @@ body {
   [class*="bg-indigo"], [class*="bg-orange"] {
     background: #fff !important;
     color: #000 !important;
+  }
+
+  /* Recharts: make axis/legend text black */
+  .recharts-cartesian-axis-tick-value,
+  .recharts-legend-item-text,
+  .recharts-text {
+    fill: #000 !important;
+    color: #000 !important;
+  }
+  .recharts-cartesian-grid line { stroke: #ddd !important; }
+
+  /* AG Grid: white background, black text */
+  .ag-theme-alpine {
+    --ag-background-color: #fff !important;
+    --ag-foreground-color: #000 !important;
+    --ag-header-background-color: #f5f5f5 !important;
+    --ag-header-foreground-color: #000 !important;
+    --ag-border-color: #ccc !important;
+    --ag-row-border-color: #eee !important;
+    --ag-odd-row-background-color: #fafafa !important;
   }
 
   /* Expand to fill page */

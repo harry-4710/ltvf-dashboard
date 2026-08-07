@@ -5,7 +5,7 @@
       "id": "ltvf.dashboard",
       "title": "LTVF Cloud Dashboard",
       "subTitle": "SAP Migration Test Results",
-      "icon": "sap-icon://chart-bar",
+      "icon": "https://d73dca5etrial-dev-ltvf-approuter.cfapps.us10-003.hana.ondemand.com/ltvf-tile-icon.svg",
       "description": "Visualise CNVLTVF3 migration test results — pass/warn/fail breakdowns, treemap, and drill-down table",
       "url": "https://d73dca5etrial-dev-ltvf-approuter.cfapps.us10-003.hana.ondemand.com",
       "navigationComponent": {

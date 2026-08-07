@@ -37,6 +37,13 @@
 - Print/PDF export
 - Vercel + Render + CF approuter deployment
 
+### v2.1.0 — Backlog Polish
+
+- Keyboard shortcuts: `E` export, `P` print, `T` theme toggle (global `keydown` in `App.tsx`)
+- Treemap drill-down: clicking a cell switches to the Detail Table filtered to that section
+- Custom CDM tile icon: `frontend/public/ltvf-tile-icon.svg` (56×56 SVG); `workzone/cdm.json` updated
+- Improved print stylesheet: `print-color-adjust: exact`, Recharts/AG Grid print overrides, targeted dark reset
+
 ### v2.0.0 — Embedded Analytics
 
 - SAP Analytics Cloud story embed (`SACEmbed` component, `VITE_SAC_STORY_URL` env var, Analytics tab)

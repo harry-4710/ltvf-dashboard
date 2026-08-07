@@ -6,6 +6,7 @@ interface Props {
   dark: boolean
   thresholds: { pass: number; warn: number }
   selectedSection: string | null
+  onCellClick?: (section: string) => void
 }
 
 interface TreeNode {
@@ -52,7 +53,7 @@ function CustomContent(props: {
   )
 }
 
-export default function TreemapChart({ rows, dark, thresholds, selectedSection }: Props) {
+export default function TreemapChart({ rows, dark, thresholds, selectedSection, onCellClick }: Props) {
   const filtered = selectedSection
     ? rows.filter(r => r.full_path.startsWith(selectedSection))
     : rows
@@ -99,14 +100,23 @@ export default function TreemapChart({ rows, dark, thresholds, selectedSection }
 
   return (
     <div className={`rounded-xl border shadow-sm p-4 ${bg}`}>
-      <p className={`text-xs uppercase tracking-wider font-medium mb-3 ${lbl}`}>
-        Test Hierarchy Treemap
-      </p>
+      <div className="flex items-center justify-between mb-3">
+        <p className={`text-xs uppercase tracking-wider font-medium ${lbl}`}>
+          Test Hierarchy Treemap
+        </p>
+        {onCellClick && (
+          <p className={`text-[10px] ${lbl}`}>Click a cell to drill down in Detail Table</p>
+        )}
+      </div>
       <ResponsiveContainer width="100%" height={260}>
         <Treemap
           data={treeData.children}
           dataKey="size"
           aspectRatio={4 / 3}
+          onClick={(node: { name?: string }) => {
+            if (onCellClick && node?.name) onCellClick(node.name)
+          }}
+          style={{ cursor: onCellClick ? 'pointer' : 'default' }}
           content={
             <CustomContent
               thresholds={thresholds}
