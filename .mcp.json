@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "ltvf-sap": {
+      "command": "node",
+      "args": ["mcp-server/index.js"],
+      "env": {
+        "LTVF_BACKEND_URL": "https://ltvf-backend.cfapps.us10-003.hana.ondemand.com"
+      }
+    }
+  }
+}
