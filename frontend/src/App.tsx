@@ -312,6 +312,15 @@ export default function App() {
                   <Printer size={15} />
                 </button>
 
+                {/* HTML Report */}
+                <button
+                  onClick={handleReport}
+                  className="text-blue-300 hover:text-white transition p-1"
+                  title="Export HTML Report [R]"
+                >
+                  <Mail size={15} />
+                </button>
+
                 {/* Export to Excel */}
                 <button
                   onClick={handleExport}
