@@ -189,6 +189,7 @@ export default function App() {
 
   const handlePrint = () => window.print()
   const handleExport = () => { if (data) exportToExcel(data) }
+  const handleReport = () => { if (data) generateHTMLReport(data, thresholds, systemTag, uploadedAt) }
 
   // Global keyboard shortcuts — skip when focus is inside an input/textarea
   useEffect(() => {
