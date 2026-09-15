@@ -198,6 +198,7 @@ export default function App() {
       if (tag === 'INPUT' || tag === 'TEXTAREA') return
       if (e.key === 'e' || e.key === 'E') { if (data) exportToExcel(data) }
       if (e.key === 'p' || e.key === 'P') { window.print() }
+      if (e.key === 'r' || e.key === 'R') { if (data) generateHTMLReport(data, thresholds, systemTag, uploadedAt) }
       if (e.key === 't' || e.key === 'T') { toggle() }
     }
     window.addEventListener('keydown', handler)
