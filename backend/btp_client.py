@@ -3,7 +3,7 @@ from typing import Optional
 import requests
 from requests.auth import HTTPBasicAuth
 from dotenv import load_dotenv
-from excel_parser import LTVFParseResult, LTVFRow, LTVFSummary
+from schemas import LTVFParseResult, LTVFRow, LTVFSummary
 
 load_dotenv()
 

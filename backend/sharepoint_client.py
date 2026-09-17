@@ -2,7 +2,8 @@ import os
 from typing import Optional
 import requests
 from dotenv import load_dotenv
-from excel_parser import LTVFParseResult, LTVFRow, LTVFSummary, parse_excel
+from schemas import LTVFParseResult, LTVFRow, LTVFSummary
+from excel_parser import parse_excel
 
 load_dotenv()
 

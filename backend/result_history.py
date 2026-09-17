@@ -117,3 +117,27 @@ def results_by_date(system: str, date: str):
     if not row:
         raise HTTPException(status_code=404, detail=f"No result found for system '{system}' on {date}")
     return json.loads(row["result_json"])
+@results_router.delete("/api/results/{result_id}", tags=["History"],
+                       summary="Delete a stored result by ID")
+def results_delete(result_id: str):
+    """Delete a single stored result record by its ID."""
+    with _db() as conn:
+        affected = conn.execute(
+            "DELETE FROM results WHERE id = ?", (result_id,)
+        ).rowcount
+    if affected == 0:
+        raise HTTPException(status_code=404, detail=f"Result '{result_id}' not found.")
+    return {"ok": True, "deleted": result_id}
+
+
+@results_router.get("/api/systems", tags=["History"],
+                    summary="List all system tags that have stored results")
+def list_systems():
+    """Return all distinct system tags with their last run time and run count."""
+    with _db() as conn:
+        rows = conn.execute(
+            "SELECT system_tag, MAX(uploaded_at) as last_run, COUNT(*) as run_count "
+            "FROM results GROUP BY system_tag ORDER BY last_run DESC"
+        ).fetchall()
+    return [dict(r) for r in rows]
+
