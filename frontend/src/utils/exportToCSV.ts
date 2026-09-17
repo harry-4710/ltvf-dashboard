@@ -23,7 +23,7 @@ export function exportToCSV(data: LTVFParseResult): void {
   }
 
   const rows = data.rows.map(r =>
-    headers.map(h => escapeCell((r as Record<string, unknown>)[h])).join(',')
+    headers.map(h => escapeCell((r as unknown as Record<string, unknown>)[h])).join(',')
   )
 
   const csv = [headers.join(','), ...rows].join('\n')

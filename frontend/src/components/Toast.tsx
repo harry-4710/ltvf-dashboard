@@ -1,4 +1,5 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useState, useCallback } from 'react'
+import type { ReactNode } from 'react'
 import { CheckCircle, AlertTriangle, XCircle, X } from 'lucide-react'
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -11,7 +12,7 @@ export interface ToastMessage {
 }
 
 // ── Toast Container ────────────────────────────────────────────────────────
-const ICONS: Record<ToastType, React.ReactNode> = {
+const ICONS: Record<ToastType, ReactNode> = {
   success: <CheckCircle size={16} className="text-green-400 flex-shrink-0" />,
   warn:    <AlertTriangle size={16} className="text-amber-400 flex-shrink-0" />,
   error:   <XCircle size={16} className="text-red-400 flex-shrink-0" />,

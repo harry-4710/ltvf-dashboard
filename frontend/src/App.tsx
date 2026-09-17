@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
-import { Database, Upload, Sun, Moon, GitCompare, Clock, Printer, FileDown, Mail, TrendingUp, FileText, History } from 'lucide-react'
+import { Database, Upload, Sun, Moon, GitCompare, Clock, Printer, FileDown, Mail, FileText, History } from 'lucide-react'
 import UploadZone from './components/UploadZone'
 import SummaryCards from './components/SummaryCards'
 import RateDonut from './components/RateDonut'
@@ -338,7 +338,7 @@ export default function App() {
 
                 {/* New upload */}
                 <button
-                  onClick={() => { setData(null); setCompareData(null); setError(null); setSelectedSection(null) }}
+                  onClick={() => { setData(null); setCompareData(null); setSelectedSection(null) }}
                   className="text-blue-300 hover:text-white transition p-1"
                   title="Upload new file"
                 >
@@ -352,14 +352,14 @@ export default function App() {
               <ThresholdPanel thresholds={thresholds} onChange={setThresholds} dark={dark} />
             )}
 
-                {/* History Viewer shortcut */}
-                <button
-                  onClick={() => setTab('history')}
-                  className={`p-1.5 rounded-lg transition text-white ${tab === 'history' ? 'bg-white/30' : 'bg-white/10 hover:bg-white/20'}`}
-                  title="Result History"
-                >
-                  <History size={15} />
-                </button>
+            {/* History Viewer shortcut */}
+            <button
+              onClick={() => setTab('history')}
+              className={`p-1.5 rounded-lg transition text-white ${tab === 'history' ? 'bg-white/30' : 'bg-white/10 hover:bg-white/20'}`}
+              title="Result History"
+            >
+              <History size={15} />
+            </button>
 
             {/* Dark mode */}
             <button
