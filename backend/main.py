@@ -1,6 +1,8 @@
 import os
+import logging
 from fastapi import FastAPI, UploadFile, File, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from logging_config import setup_logging
 from schemas import LTVFParseResult
 from excel_parser import parse_excel
 from btp_client import fetch_ltvf_via_btp, is_btp_configured
@@ -8,6 +10,9 @@ from sharepoint_client import fetch_ltvf_from_sharepoint, is_sharepoint_configur
 from settings import settings_router
 from result_history import results_router
 from alerting import send_alert_if_needed
+
+setup_logging()
+log = logging.getLogger(__name__)
 
 app = FastAPI(
     title="LTVF Dashboard API",
@@ -43,8 +48,11 @@ async def upload_ltvf(request: Request, file: UploadFile = File(...)):
         raise HTTPException(status_code=413, detail="File too large. Maximum upload size is 10 MB.")
     try:
         result = parse_excel(contents, file.filename)
+        log.info("upload_success filename=%s rows=%d rate=%.1f",
+                 file.filename, len(result.rows), result.summary.overall_rate)
     except Exception as exc:
         import traceback
+        log.error("upload_failed filename=%s error=%s", file.filename, exc)
         raise HTTPException(status_code=422, detail=f"Failed to parse file: {exc}\n{traceback.format_exc()}")
     return result
 

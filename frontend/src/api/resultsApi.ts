@@ -28,3 +28,19 @@ export async function getResultByDate(system: string, date: string): Promise<LTV
   )
   return data
 }
+
+export async function deleteResult(id: string): Promise<void> {
+  await api.delete(`/results/${encodeURIComponent(id)}`)
+}
+
+export interface SystemMeta {
+  system_tag: string
+  last_run: string
+  run_count: number
+}
+
+export async function getSystems(): Promise<SystemMeta[]> {
+  const { data } = await api.get<SystemMeta[]>('/systems')
+  return data
+}
+

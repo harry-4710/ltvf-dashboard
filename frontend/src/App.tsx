@@ -1,5 +1,5 @@
-import { useState, useCallback, useEffect, useRef } from 'react'
-import { Database, Upload, Sun, Moon, GitCompare, Clock, Printer, FileDown, Mail, TrendingUp } from 'lucide-react'
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
+import { Database, Upload, Sun, Moon, GitCompare, Clock, Printer, FileDown, Mail, TrendingUp, FileText, History } from 'lucide-react'
 import UploadZone from './components/UploadZone'
 import SummaryCards from './components/SummaryCards'
 import RateDonut from './components/RateDonut'
@@ -12,6 +12,10 @@ import ThresholdPanel from './components/ThresholdPanel'
 import TreemapChart from './components/TreemapChart'
 import ComparePanel from './components/ComparePanel'
 import UploadHistory from './components/UploadHistory'
+import TrendChart from './components/TrendChart'
+import HistoryViewer from './components/HistoryViewer'
+import SystemTagSelector from './components/SystemTagSelector'
+import { ToastContainer, useToast } from './components/Toast'
 import { uploadLTVF } from './api/sapApi'
 import { checkSAPStatus, fetchFromSAP } from './api/btpApi'
 import { checkScheduledStatus, fetchScheduled } from './api/scheduledApi'
@@ -21,10 +25,12 @@ import SACEmbed from './components/SACEmbed'
 import type { LTVFParseResult } from './types/ltvf'
 import { loadHistory, saveToHistory, deleteFromHistory, type HistoryEntry } from './utils/history'
 import { exportToExcel } from './utils/exportToExcel'
+import { exportToCSV } from './utils/exportToCSV'
 import { generateHTMLReport } from './utils/generateReport'
+import { recomputeSummary } from './utils/classify'
 import './index.css'
 
-type Tab = 'overview' | 'table' | 'treemap' | 'compare' | 'analytics'
+type Tab = 'overview' | 'table' | 'treemap' | 'compare' | 'analytics' | 'trend' | 'history'
 
 function useTheme() {
   const [dark, setDark] = useState<boolean>(() => {
@@ -43,24 +49,30 @@ function useTheme() {
 
 export default function App() {
   const { dark, toggle } = useTheme()
+  const { toasts, toast, dismiss } = useToast()
   const [data, setData]               = useState<LTVFParseResult | null>(null)
   const [compareData, setCompareData] = useState<LTVFParseResult | null>(null)
   const [loading, setLoading]         = useState(false)
   const [compareLoading, setCompareLoading] = useState(false)
-  const [error, setError]             = useState<string | null>(null)
   const [tab, setTab]                 = useState<Tab>('overview')
   const [selectedSection, setSelectedSection] = useState<string | null>(() =>
     localStorage.getItem('ltvf-section')
   )
   const [thresholds, setThresholds]   = useState({ pass: 95, warn: 80 })
   const [systemTag, setSystemTag]     = useState('')
-  const [showTagInput, setShowTagInput] = useState(false)
   const [history, setHistory]         = useState<HistoryEntry[]>(() => loadHistory())
   const [showHistory, setShowHistory] = useState(false)
   const [uploadedAt, setUploadedAt]   = useState<Date | null>(null)
   const [sapAvailable, setSapAvailable] = useState(false)
   const [scheduledAvailable, setScheduledAvailable] = useState(false)
   const [lastExportTime, setLastExportTime] = useState<string | null>(null)
+
+  // Re-compute pass/warn/fail counts using the live frontend thresholds,
+  // overriding the hardcoded 95/80 values from the backend parser.
+  const displaySummary = useMemo(() =>
+    data ? recomputeSummary(data.rows, data.summary, thresholds) : null,
+    [data, thresholds]
+  )
 
   useEffect(() => {
     checkSAPStatus().then(r => setSapAvailable(r.available)).catch(() => setSapAvailable(false))
@@ -101,7 +113,6 @@ export default function App() {
 
   const handleFile = useCallback(async (file: File) => {
     setLoading(true)
-    setError(null)
     try {
       const result = await uploadLTVF(file)
       setData(result)
@@ -111,16 +122,16 @@ export default function App() {
       const updated = saveToHistory({ filename: result.filename, timestamp: new Date().toISOString(), systemTag, data: result })
       setHistory(updated)
       saveResult(systemTag, result).catch(() => { /* best-effort */ })
+      toast.success(`Loaded ${result.summary.total_rows} test cases — ${result.summary.overall_rate.toFixed(1)}% match rate`)
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Upload failed')
+      toast.error(e instanceof Error ? e.message : 'Upload failed. Check the file format and try again.')
     } finally {
       setLoading(false)
     }
-  }, [systemTag])
+  }, [systemTag, toast])
 
   const handleFetchScheduled = useCallback(async () => {
     setLoading(true)
-    setError(null)
     try {
       const result = await fetchScheduled()
       setData(result)
@@ -130,16 +141,16 @@ export default function App() {
       const updated = saveToHistory({ filename: result.filename, timestamp: new Date().toISOString(), systemTag, data: result })
       setHistory(updated)
       saveResult(systemTag, result).catch(() => { /* best-effort */ })
+      toast.success(`Scheduled export loaded — ${result.summary.overall_rate.toFixed(1)}% match rate`)
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Failed to load SAP export from SharePoint')
+      toast.error(e instanceof Error ? e.message : 'Failed to load SAP export from SharePoint')
     } finally {
       setLoading(false)
     }
-  }, [systemTag])
+  }, [systemTag, toast])
 
   const handleFetchFromSAP = useCallback(async () => {
     setLoading(true)
-    setError(null)
     try {
       const result = await fetchFromSAP()
       setData(result)
@@ -149,26 +160,27 @@ export default function App() {
       const updated = saveToHistory({ filename: result.filename, timestamp: new Date().toISOString(), systemTag, data: result })
       setHistory(updated)
       saveResult(systemTag, result).catch(() => { /* best-effort */ })
+      toast.success(`SAP live data fetched — ${result.summary.overall_rate.toFixed(1)}% match rate`)
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Failed to fetch from SAP')
+      toast.error(e instanceof Error ? e.message : 'Failed to fetch from SAP')
     } finally {
       setLoading(false)
     }
-  }, [systemTag])
+  }, [systemTag, toast])
 
   const handleCompareFile = useCallback(async (file: File) => {
     setCompareLoading(true)
-    setError(null)
     try {
       const result = await uploadLTVF(file)
       setCompareData(result)
       setTab('compare')
+      toast.info(`Compare file loaded: ${result.filename}`)
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Compare upload failed')
+      toast.error(e instanceof Error ? e.message : 'Compare upload failed')
     } finally {
       setCompareLoading(false)
     }
-  }, [])
+  }, [toast])
 
   const handleHistoryLoad = (entry: HistoryEntry) => {
     setData(entry.data)
@@ -187,9 +199,10 @@ export default function App() {
     setSelectedSection(prev => prev === section ? null : section)
   }
 
-  const handlePrint = () => window.print()
-  const handleExport = () => { if (data) exportToExcel(data) }
-  const handleReport = () => { if (data) generateHTMLReport(data, thresholds, systemTag, uploadedAt) }
+  const handlePrint   = () => window.print()
+  const handleExport  = () => { if (data) { exportToExcel(data); toast.success('Excel file downloaded') } }
+  const handleExportCSV = () => { if (data) { exportToCSV(data); toast.success('CSV file downloaded') } }
+  const handleReport  = () => { if (data) generateHTMLReport(data, thresholds, systemTag, uploadedAt) }
 
   // Global keyboard shortcuts — skip when focus is inside an input/textarea
   useEffect(() => {
@@ -210,6 +223,8 @@ export default function App() {
     { key: 'treemap',    label: 'Treemap' },
     { key: 'table',      label: 'Detail Table' },
     { key: 'compare',    label: 'Compare' },
+    { key: 'trend',      label: 'Trend' },
+    { key: 'history',    label: 'History' },
     { key: 'analytics',  label: 'Analytics' },
   ]
 
@@ -252,26 +267,8 @@ export default function App() {
                 ))}
                 <div className="w-px h-4 bg-blue-700 mx-1" />
 
-                {/* System tag */}
-                {showTagInput ? (
-                  <input
-                    autoFocus
-                    className="text-xs px-2 py-1 rounded bg-blue-800 text-white border border-blue-500 outline-none w-28"
-                    placeholder="e.g. QSL, PRD"
-                    value={systemTag}
-                    onChange={e => setSystemTag(e.target.value)}
-                    onBlur={() => setShowTagInput(false)}
-                    onKeyDown={e => e.key === 'Enter' && setShowTagInput(false)}
-                  />
-                ) : (
-                  <button
-                    onClick={() => setShowTagInput(true)}
-                    className="text-xs text-blue-300 hover:text-white transition px-2"
-                    title="Set SAP system tag"
-                  >
-                    {systemTag || '+ System'}
-                  </button>
-                )}
+                {/* System tag selector (combo-box) */}
+                <SystemTagSelector value={systemTag} onChange={setSystemTag} dark={dark} />
 
                 {/* Compare */}
                 <label
@@ -321,6 +318,15 @@ export default function App() {
                   <Mail size={15} />
                 </button>
 
+                {/* Export to CSV */}
+                <button
+                  onClick={handleExportCSV}
+                  className="text-blue-300 hover:text-white transition p-1"
+                  title="Export to CSV"
+                >
+                  <FileText size={15} />
+                </button>
+
                 {/* Export to Excel */}
                 <button
                   onClick={handleExport}
@@ -346,14 +352,14 @@ export default function App() {
               <ThresholdPanel thresholds={thresholds} onChange={setThresholds} dark={dark} />
             )}
 
-            {/* Analytics shortcut (always visible) */}
-            <button
-              onClick={() => setTab('analytics')}
-              className={`p-1.5 rounded-lg transition text-white ${tab === 'analytics' ? 'bg-white/30' : 'bg-white/10 hover:bg-white/20'}`}
-              title="Analytics (SAC embed)"
-            >
-              <TrendingUp size={15} />
-            </button>
+                {/* History Viewer shortcut */}
+                <button
+                  onClick={() => setTab('history')}
+                  className={`p-1.5 rounded-lg transition text-white ${tab === 'history' ? 'bg-white/30' : 'bg-white/10 hover:bg-white/20'}`}
+                  title="Result History"
+                >
+                  <History size={15} />
+                </button>
 
             {/* Dark mode */}
             <button
@@ -366,16 +372,8 @@ export default function App() {
           </div>
         </div>
 
-        {/* ── Error banner ──────────────────────────────────────────── */}
-        {error && (
-          <div className="mx-4 mt-3 p-3 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded text-red-700 dark:text-red-300 text-sm flex justify-between no-print">
-            <span>{error}</span>
-            <span className="cursor-pointer" onClick={() => setError(null)}>✕</span>
-          </div>
-        )}
-
         {/* ── Upload screen ─────────────────────────────────────────── */}
-        {!data && !loading && tab !== 'analytics' && (
+        {!data && !loading && tab !== 'analytics' && tab !== 'history' && (
           <div className="flex-1 flex items-center justify-center">
             <UploadZone
               onFile={handleFile}
@@ -397,6 +395,15 @@ export default function App() {
           </div>
         )}
 
+        {/* ── History tab (no data required) ────────────────────────── */}
+        {(tab === 'history') && !loading && (
+          <div className="flex-1 flex flex-col min-h-0 overflow-auto">
+            <HistoryViewer systemTag={systemTag} dark={dark} thresholds={thresholds}
+              onLoad={(result) => { setData(result); setTab('overview'); setSelectedSection(null); setUploadedAt(new Date()) }}
+            />
+          </div>
+        )}
+
         {loading && (
           <div className="flex-1 flex flex-col items-center justify-center gap-3 text-gray-400 dark:text-slate-500">
             <div className="w-10 h-10 border-4 border-blue-200 dark:border-slate-700 border-t-blue-600 rounded-full animate-spin" />
@@ -405,13 +412,13 @@ export default function App() {
         )}
 
         {/* ── Dashboard ─────────────────────────────────────────────── */}
-        {data && !loading && (
+        {data && !loading && tab !== 'history' && (
           <div className="flex-1 flex flex-col min-h-0 overflow-auto">
 
-            <SummaryCards summary={data.summary} dark={dark} thresholds={thresholds} systemTag={systemTag} />
+            <SummaryCards summary={displaySummary ?? data.summary} dark={dark} thresholds={thresholds} systemTag={systemTag} />
 
             {/* Section filter chips */}
-            {tab !== 'compare' && (
+            {tab !== 'compare' && tab !== 'trend' && (
               <FilterChips
                 sections={data.sections}
                 selected={selectedSection}
@@ -424,7 +431,7 @@ export default function App() {
             {tab === 'overview' && (
               <div className="px-4 pb-4 flex flex-col gap-4 flex-1">
                 <div className="grid grid-cols-3 gap-4">
-                  <RateDonut summary={data.summary} dark={dark} thresholds={thresholds} />
+                  <RateDonut summary={displaySummary ?? data.summary} dark={dark} thresholds={thresholds} />
                   <SectionChart
                     rows={data.rows}
                     dark={dark}
@@ -488,6 +495,13 @@ export default function App() {
               </div>
             )}
 
+            {/* Trend tab */}
+            {tab === 'trend' && (
+              <div className="px-4 pb-4 flex-1">
+                <TrendChart systemTag={systemTag} dark={dark} thresholds={thresholds} />
+              </div>
+            )}
+
             {/* Analytics tab */}
             {tab === 'analytics' && (
               <div className="flex-1 flex flex-col min-h-0">
@@ -496,6 +510,9 @@ export default function App() {
             )}
           </div>
         )}
+
+        {/* ── Toast notifications ────────────────────────────────────── */}
+        <ToastContainer toasts={toasts} onDismiss={dismiss} />
       </div>
     </div>
   )
