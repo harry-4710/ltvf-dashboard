@@ -15,9 +15,10 @@ import UploadHistory from './components/UploadHistory'
 import TrendChart from './components/TrendChart'
 import HistoryViewer from './components/HistoryViewer'
 import SystemTagSelector from './components/SystemTagSelector'
+import BTPStatusPanel from './components/BTPStatusPanel'
 import { ToastContainer, useToast } from './components/Toast'
 import { uploadLTVF } from './api/sapApi'
-import { checkSAPStatus, fetchFromSAP } from './api/btpApi'
+import { checkSAPStatus, fetchFromSAP, type BTPStatusInfo } from './api/btpApi'
 import { checkScheduledStatus, fetchScheduled } from './api/scheduledApi'
 import { getSettings, saveSettings } from './api/settingsApi'
 import { saveResult } from './api/resultsApi'
@@ -63,7 +64,9 @@ export default function App() {
   const [history, setHistory]         = useState<HistoryEntry[]>(() => loadHistory())
   const [showHistory, setShowHistory] = useState(false)
   const [uploadedAt, setUploadedAt]   = useState<Date | null>(null)
-  const [sapAvailable, setSapAvailable] = useState(false)
+  const [sapAvailable, setSapAvailable]     = useState(false)
+  const [btpStatus, setBtpStatus]           = useState<BTPStatusInfo | null>(null)
+  const [showBTPPanel, setShowBTPPanel]     = useState(false)
   const [scheduledAvailable, setScheduledAvailable] = useState(false)
   const [lastExportTime, setLastExportTime] = useState<string | null>(null)
 
@@ -75,7 +78,7 @@ export default function App() {
   )
 
   useEffect(() => {
-    checkSAPStatus().then(r => setSapAvailable(r.available)).catch(() => setSapAvailable(false))
+    checkSAPStatus().then(r => { setSapAvailable(r.available); setBtpStatus(r) }).catch(() => setSapAvailable(false))
     checkScheduledStatus().then(r => {
       setScheduledAvailable(r.available)
       setLastExportTime(r.last_modified)
@@ -152,7 +155,7 @@ export default function App() {
   const handleFetchFromSAP = useCallback(async () => {
     setLoading(true)
     try {
-      const result = await fetchFromSAP()
+      const result = await fetchFromSAP(systemTag)
       setData(result)
       setTab('overview')
       setSelectedSection(null)
@@ -279,6 +282,26 @@ export default function App() {
                   <input type="file" accept=".xlsx,.xls" className="hidden"
                     onChange={e => { const f = e.target.files?.[0]; if (f) handleCompareFile(f) }} />
                 </label>
+
+                {/* BTP connection status button */}
+                <div className="relative">
+                  <button
+                    onClick={() => setShowBTPPanel(p => !p)}
+                    className={`flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border transition
+                      ${sapAvailable
+                        ? 'border-green-500/50 text-green-400 hover:bg-green-900/30'
+                        : 'border-slate-600 text-slate-400 hover:bg-slate-700'
+                      } ${showBTPPanel ? 'bg-slate-700' : ''}`}
+                    title="SAP BTP connection status"
+                  >
+                    <Database size={13} />
+                    <span className={`w-1.5 h-1.5 rounded-full ${sapAvailable ? 'bg-green-500 animate-pulse' : 'bg-slate-500'}`} />
+                    BTP
+                  </button>
+                  {showBTPPanel && (
+                    <BTPStatusPanel status={btpStatus} dark={dark} onClose={() => setShowBTPPanel(false)} />
+                  )}
+                </div>
 
                 {/* History */}
                 <div className="relative">

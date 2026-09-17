@@ -3,6 +3,11 @@ __pycache__/
 *.pyc
 .env
 
+# SQLite databases (runtime, not source)
+*.db
+*.db-shm
+*.db-wal
+
 # Node
 node_modules/
 dist/

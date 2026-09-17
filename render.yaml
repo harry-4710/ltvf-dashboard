@@ -6,7 +6,33 @@ services:
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:
-      - key: USE_MOCK_SCHEDULED
-        value: "true"
+      # CORS — lock to your Vercel frontend URL
       - key: ALLOWED_ORIGINS
         value: "https://ltvf-dashboard.vercel.app"
+
+      # ── METHOD B: BTP Cloud Connector ──────────────────────────────────────
+      # Set these in Render Dashboard → ltvf-backend → Environment after
+      # completing the BTP setup in SETUP_BTP.md
+      - key: BTP_TOKEN_URL
+        value: ""
+      - key: BTP_DEST_CLIENT_ID
+        value: ""
+      - key: BTP_DEST_CLIENT_SECRET
+        value: ""
+      - key: BTP_DEST_SVC_URL
+        value: "https://destination-configuration.cfapps.us10.hana.ondemand.com"
+      - key: BTP_CONN_PROXY_HOST
+        value: "connectivity.cf.sap.hana.ondemand.com"
+      - key: BTP_CONN_PROXY_PORT
+        value: "20003"
+      - key: SAP_DESTINATION_NAME
+        value: "LTVF_ONPREMISE"
+      - key: SAP_ODATA_SERVICE
+        value: "/sap/opu/odata/sap/CNVLTVF3_SRV"
+      - key: ODATA_ENTITY_SET
+        value: "LTVFResultSet"
+
+      # ── METHOD C: SharePoint Scheduled Export ──────────────────────────────
+      - key: USE_MOCK_SCHEDULED
+        value: "true"
+

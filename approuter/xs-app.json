@@ -1,11 +1,19 @@
 {
   "welcomeFile": "index.html",
   "authenticationMethod": "none",
+  "destinations": [
+    {
+      "name": "ltvf-backend",
+      "logoutPath": "/api/logout",
+      "logoutMethod": "GET"
+    }
+  ],
   "routes": [
     {
       "source": "^/api/(.*)$",
       "destination": "ltvf-backend",
-      "authenticationType": "none"
+      "authenticationType": "none",
+      "csrfProtection": false
     },
     {
       "source": "^(.*)$",
@@ -14,3 +22,4 @@
     }
   ]
 }
+
