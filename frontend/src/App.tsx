@@ -23,6 +23,8 @@ import { checkScheduledStatus, fetchScheduled } from './api/scheduledApi'
 import { getSettings, saveSettings } from './api/settingsApi'
 import { saveResult } from './api/resultsApi'
 import SACEmbed from './components/SACEmbed'
+import SignOffPanel from './components/SignOffPanel'
+import StreamStats from './components/StreamStats'
 import type { LTVFParseResult } from './types/ltvf'
 import { loadHistory, saveToHistory, deleteFromHistory, type HistoryEntry } from './utils/history'
 import { exportToExcel } from './utils/exportToExcel'
@@ -119,6 +121,10 @@ export default function App() {
     try {
       const result = await uploadLTVF(file)
       setData(result)
+      // Auto-set pass threshold to 85% for LTVR files (per LTVR requirement)
+      if (result.summary.has_signoff) {
+        setThresholds(prev => prev.pass === 95 ? { pass: 85, warn: 70 } : prev)
+      }
       setTab('overview')
       setSelectedSection(null)
       setUploadedAt(new Date())
@@ -465,6 +471,13 @@ export default function App() {
                   <VolumeChart summary={data.summary} dark={dark} />
                 </div>
                 <FailChart rows={data.rows} dark={dark} thresholds={thresholds} selectedSection={selectedSection} />
+                {/* LTVR-only panels: sign-off status + stream breakdown */}
+                {data.summary.has_signoff && (
+                  <div className="grid grid-cols-2 gap-4 mt-2">
+                    <SignOffPanel summary={data.summary} dark={dark} />
+                    <StreamStats rows={data.rows} dark={dark} passThreshold={thresholds.pass} />
+                  </div>
+                )}
               </div>
             )}
 

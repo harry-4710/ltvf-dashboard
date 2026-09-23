@@ -18,6 +18,13 @@ export interface LTVFRow {
   source1: number | null
   source2: number | null
   target: number | null
+  // LTVR sign-off fields (null for plain LTVF files)
+  so_status: string | null
+  signed_by: string | null
+  wi_pct: number | null
+  tot: number | null
+  err: number | null
+  fin: number | null
 }
 
 export interface LTVFSummary {
@@ -32,6 +39,12 @@ export interface LTVFSummary {
   pass_count: number
   warn_count: number
   fail_count: number
+  // LTVR sign-off summary (false/0 for plain LTVF)
+  has_signoff: boolean
+  total_approved: number
+  total_rejected: number
+  total_recheck: number
+  total_volume: number
 }
 
 export interface LTVFParseResult {
@@ -52,3 +65,4 @@ export interface ResultEntry {
   fail_count: number
   total_rows: number
 }
+

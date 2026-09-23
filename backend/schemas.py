@@ -29,6 +29,13 @@ class LTVFRow(BaseModel):
     source1: Optional[int] = None
     source2: Optional[int] = None
     target: Optional[int] = None
+    # LTVR-specific fields (present when file has Sign-Off column)
+    so_status: Optional[str] = None   # "Approved" | "Rejected" | "Re-check"
+    signed_by: Optional[str] = None
+    wi_pct: Optional[float] = None    # WI(%) — work-item completion %
+    tot: Optional[int] = None         # total work items
+    err: Optional[int] = None         # error count
+    fin: Optional[int] = None         # finished count
 
 
 class LTVFSummary(BaseModel):
@@ -43,6 +50,12 @@ class LTVFSummary(BaseModel):
     pass_count: int   # rate >= pass threshold (default 95)
     warn_count: int   # warn threshold <= rate < pass threshold (default 80–94)
     fail_count: int   # rate < warn threshold (default < 80)
+    # LTVR sign-off summary (all zero / False for non-LTVR files)
+    has_signoff: bool = False
+    total_approved: int = 0
+    total_rejected: int = 0
+    total_recheck: int = 0
+    total_volume: int = 0    # aggregate Tot (work items) from LTVR grand-total row
 
 
 class LTVFParseResult(BaseModel):

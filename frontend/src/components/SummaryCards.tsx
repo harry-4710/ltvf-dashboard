@@ -126,6 +126,34 @@ export default function SummaryCards({ summary, dark, thresholds, systemTag }: P
           </p>
         </div>
 
+        {/* Sign-off counts — only shown for LTVR files */}
+        {summary.has_signoff && (
+          <>
+            <div className={`rounded-xl border-l-4 p-3 shadow-sm border-green-500 ${d ? 'bg-green-950' : 'bg-green-50'}`}>
+              <p className={`text-[11px] uppercase tracking-wider font-medium ${lbl}`}>Approved</p>
+              <AnimatedInt value={summary.total_approved} color="text-green-500" />
+              <p className={`text-[11px] mt-1 ${sub}`}>Sign-off approved</p>
+            </div>
+            <div className={`rounded-xl border-l-4 p-3 shadow-sm border-red-500 ${d ? 'bg-red-950' : 'bg-red-50'}`}>
+              <p className={`text-[11px] uppercase tracking-wider font-medium ${lbl}`}>Rejected</p>
+              <AnimatedInt value={summary.total_rejected} color="text-red-500" />
+              <p className={`text-[11px] mt-1 ${sub}`}>Sign-off rejected</p>
+            </div>
+            <div className={`rounded-xl border-l-4 p-3 shadow-sm border-amber-500 ${d ? 'bg-amber-950' : 'bg-amber-50'}`}>
+              <p className={`text-[11px] uppercase tracking-wider font-medium ${lbl}`}>Re-check</p>
+              <AnimatedInt value={summary.total_recheck} color="text-amber-500" />
+              <p className={`text-[11px] mt-1 ${sub}`}>Needs re-check</p>
+            </div>
+            {summary.total_volume > 0 && (
+              <div className={`rounded-xl border-l-4 p-3 shadow-sm border-cyan-500 ${d ? 'bg-cyan-950' : 'bg-cyan-50'}`}>
+                <p className={`text-[11px] uppercase tracking-wider font-medium ${lbl}`}>Work Items</p>
+                <AnimatedInt value={summary.total_volume} color="text-cyan-500" />
+                <p className={`text-[11px] mt-1 ${sub}`}>Total volume (Tot)</p>
+              </div>
+            )}
+          </>
+        )}
+
       </div>
     </div>
   )
