@@ -89,6 +89,58 @@ jobs:
           print('FastAPI app loaded OK — routes:', len(app.routes))
           "
 
+  # ── Deploy to BTP Cloud Foundry (main branch only) ───────────────────────
+  deploy:
+    name: Deploy to BTP CF
+    needs: [frontend, backend]
+    runs-on: ubuntu-latest
+    # Only deploy on push to main (not on PRs)
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js (for MBT build)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install MBT (MTA Build Tool)
+        run: npm install -g mbt
+
+      - name: Install CF CLI
+        run: |
+          wget -q -O - https://packages.cloudfoundry.org/debian/cli.cloudfoundry.org.key | sudo apt-key add -
+          echo "deb https://packages.cloudfoundry.org/debian stable main" | sudo tee /etc/apt/sources.list.d/cloudfoundry-cli.list
+          sudo apt-get update -q
+          sudo apt-get install -y cf8-cli
+
+      - name: Install CF MTA plugin
+        run: |
+          cf install-plugin -f https://github.com/cloudfoundry-incubator/multiapps-cli-plugin/releases/latest/download/mta_plugin_linux_amd64
+
+      - name: Login to CF
+        run: |
+          cf login \
+            -a "${{ secrets.CF_API }}" \
+            -u "${{ secrets.CF_USER }}" \
+            -p "${{ secrets.CF_PASSWORD }}" \
+            -o "${{ secrets.CF_ORG }}" \
+            -s "${{ secrets.CF_SPACE }}"
+
+      - name: Build MTA archive
+        run: mbt build
+
+      - name: Deploy MTA to CF
+        run: cf deploy mta_archives/ltvf-dashboard_1.0.0.mtar --version-rule ALL -f
+
+      - name: Verify apps are running
+        run: |
+          cf apps
+          echo ""
+          echo "✅ Frontend: https://d73dca5etrial-dev-ltvf-approuter.cfapps.us10-003.hana.ondemand.com"
+          echo "✅ Backend:  https://ltvf-backend.cfapps.us10-003.hana.ondemand.com/api/health"
+
   # ── Summary ──────────────────────────────────────────────────────────────
   all-checks:
     name: All checks passed
@@ -96,3 +148,4 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo "✅ Frontend build and backend import checks passed."
+
