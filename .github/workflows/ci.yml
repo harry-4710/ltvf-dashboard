@@ -117,7 +117,10 @@ jobs:
 
       - name: Install CF MTA plugin
         run: |
-          cf install-plugin -f https://github.com/cloudfoundry-incubator/multiapps-cli-plugin/releases/latest/download/mta_plugin_linux_amd64
+          CF_PLUGIN_URL="https://github.com/SAP/cf-mta-plugin/releases/latest/download/mta_plugin_linux_amd64"
+          curl -L "$CF_PLUGIN_URL" -o mta_plugin_linux_amd64
+          chmod +x mta_plugin_linux_amd64
+          cf install-plugin -f ./mta_plugin_linux_amd64
 
       - name: Login to CF
         run: |
