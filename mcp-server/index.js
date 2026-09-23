@@ -1,7 +1,11 @@
 #!/usr/bin/env node
 /**
  * LTVF MCP Server
- * Exposes SAP CNVLTVF3 test results as Claude Code tools.
+ * Exposes SAP CNVLTVF3 test results as MCP tools.
+ *
+ * Transport modes (set MCP_TRANSPORT env var):
+ *   stdio  (default) — for Claude Code / local agents
+ *   http             — HTTP + SSE for Joule Hub / remote clients (requires XSUAA auth in CF)
  *
  * Tools:
  *   get_ltvf_status  - Check if SAP is reachable and configured
@@ -23,10 +27,17 @@
  *   BTP_CONN_PROXY_HOST    - Connectivity proxy host
  *   BTP_CONN_PROXY_PORT    - Connectivity proxy port (default: 20003)
  *   SAP_DESTINATION_NAME   - BTP destination name (default: LTVF_ONPREMISE)
+ *
+ *   HTTP transport only:
+ *   MCP_TRANSPORT    - "http" to enable HTTP+SSE mode (default: stdio)
+ *   PORT             - HTTP listen port (default: 3001, CF uses PORT env)
+ *   ALLOWED_ORIGINS  - Comma-separated CORS origins (default: *.hana.ondemand.com)
+ *   XSUAA_DISABLED   - "true" to skip XSUAA auth (local dev only)
  */
 
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
@@ -34,6 +45,7 @@ import {
 import { readFileSync, existsSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
+import { createRequire } from "module";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -358,67 +370,63 @@ function formatSection(rows, sectionName) {
   return lines.join("\n");
 }
 
-// ── MCP Server ─────────────────────────────────────────────────────────────
+// ── MCP Tool Definitions + Handler ─────────────────────────────────────────
+// Extracted so both the global (stdio) server and per-session (HTTP) servers
+// share the same tool logic without duplication.
 
-const server = new Server(
-  { name: "ltvf-sap-server", version: "1.0.0" },
-  { capabilities: { tools: {} } }
-);
-
-server.setRequestHandler(ListToolsRequestSchema, async () => ({
-  tools: [
-    {
-      name: "get_ltvf_status",
-      description: "Check if SAP CNVLTVF3 connection is configured and reachable. Use this before fetching data.",
-      inputSchema: {
-        type: "object",
-        properties: {},
-        required: [],
-      },
-    },
-    {
-      name: "fetch_ltvf_data",
-      description:
-        "Fetch live CNVLTVF3 test results from SAP. Returns summary statistics and all test cases with pass/warn/fail status. Use this to analyze SAP migration quality.",
-      inputSchema: {
-        type: "object",
-        properties: {
-          include_rows: {
-            type: "boolean",
-            description: "Include full row data (default: false — summary only). Set true for detailed analysis.",
-          },
+/** Tool list — shared across all server instances */
+const TOOL_DEFINITIONS = [
+  {
+    name: "get_ltvf_status",
+    description: "Check if SAP CNVLTVF3 connection is configured and reachable. Use this before fetching data.",
+    inputSchema: { type: "object", properties: {}, required: [] },
+  },
+  {
+    name: "fetch_ltvf_data",
+    description:
+      "Fetch live CNVLTVF3 test results from SAP. Returns summary statistics and all test cases with pass/warn/fail status. Use this to analyze SAP migration quality.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        include_rows: {
+          type: "boolean",
+          description: "Include full row data (default: false — summary only). Set true for detailed analysis.",
         },
-        required: [],
       },
+      required: [],
     },
-    {
-      name: "query_ltvf",
-      description:
-        "Query LTVF test results with filters. Use after fetch_ltvf_data to analyze specific sections or failure patterns.",
-      inputSchema: {
-        type: "object",
-        properties: {
-          filter: {
-            type: "string",
-            enum: ["all", "fail", "warn", "pass"],
-            description: "Filter by test case status. Default: all",
-          },
-          section: {
-            type: "string",
-            description: "Filter to a specific section (e.g. '01. Master Data'). Optional.",
-          },
-          top_n_failing: {
-            type: "integer",
-            description: "Return only the N worst-performing test cases. Optional.",
-          },
+  },
+  {
+    name: "query_ltvf",
+    description:
+      "Query LTVF test results with filters. Use after fetch_ltvf_data to analyze specific sections or failure patterns.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        filter: {
+          type: "string",
+          enum: ["all", "fail", "warn", "pass"],
+          description: "Filter by test case status. Default: all",
         },
-        required: [],
+        section: {
+          type: "string",
+          description: "Filter to a specific section (e.g. '01. Master Data'). Optional.",
+        },
+        top_n_failing: {
+          type: "integer",
+          description: "Return only the N worst-performing test cases. Optional.",
+        },
       },
+      required: [],
     },
-  ],
-}));
+  },
+];
 
-server.setRequestHandler(CallToolRequestSchema, async (request) => {
+// Module-level result cache (shared across sessions in the same process)
+let _cachedResult = null;
+
+/** Shared CallTool handler — used by both stdio and HTTP server instances */
+async function callToolHandler(request) {
   const { name, arguments: args } = request.params;
 
   try {
@@ -460,20 +468,15 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         text += "\n\nFull row data (JSON):\n" + JSON.stringify(result.rows, null, 2);
       }
 
-      // Cache result for query_ltvf
-      server._cachedResult = result;
-
+      _cachedResult = result;
       return { content: [{ type: "text", text }] };
     }
 
     if (name === "query_ltvf") {
-      const result = server._cachedResult;
+      const result = _cachedResult;
       if (!result) {
         return {
-          content: [{
-            type: "text",
-            text: "No data loaded yet. Run fetch_ltvf_data first.",
-          }],
+          content: [{ type: "text", text: "No data loaded yet. Run fetch_ltvf_data first." }],
         };
       }
 
@@ -482,20 +485,19 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       const section = args?.section;
       const topN = args?.top_n_failing;
 
-      // Section filter
       if (section) {
-        return {
-          content: [{ type: "text", text: formatSection(rows, section) }],
-        };
+        return { content: [{ type: "text", text: formatSection(rows, section) }] };
       }
 
-      // Status filter
       if (filter !== "all") {
-        const thresholds = { fail: r => r.rate_pct < 80, warn: r => r.rate_pct >= 80 && r.rate_pct < 95, pass: r => r.rate_pct >= 95 };
+        const thresholds = {
+          fail: r => r.rate_pct < 80,
+          warn: r => r.rate_pct >= 80 && r.rate_pct < 95,
+          pass: r => r.rate_pct >= 95,
+        };
         rows = rows.filter(r => !r.is_group && r.rate_pct !== null && thresholds[filter](r));
       }
 
-      // Top N failing
       if (topN) {
         rows = rows
           .filter(r => !r.is_group && r.rate_pct !== null)
@@ -526,9 +528,165 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       isError: true,
     };
   }
-});
+}
+
+// ── Global MCP Server (stdio mode) ─────────────────────────────────────────
+
+const server = new Server(
+  { name: "ltvf-sap-server", version: "2.0.0" },
+  { capabilities: { tools: {} } }
+);
+
+server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: TOOL_DEFINITIONS }));
+server.setRequestHandler(CallToolRequestSchema, callToolHandler);
 
 // ── Start ──────────────────────────────────────────────────────────────────
 
-const transport = new StdioServerTransport();
-await server.connect(transport);
+const MCP_TRANSPORT = (process.env.MCP_TRANSPORT || "stdio").toLowerCase();
+
+if (MCP_TRANSPORT === "http") {
+  await startHttpServer();
+} else {
+  // Default: stdio (backward-compatible with Claude Code)
+  const transport = new StdioServerTransport();
+  await server.connect(transport);
+}
+
+// ── HTTP / SSE Server ──────────────────────────────────────────────────────
+
+async function startHttpServer() {
+  // Lazy-import express and auth (only needed for HTTP mode)
+  const { default: express } = await import("express");
+  const { xsuaaAuth, getAuthInfo } = await import("./auth.js");
+
+  const app = express();
+  const PORT = parseInt(process.env.PORT || "3001", 10);
+
+  // ── CORS ─────────────────────────────────────────────────────────────────
+  const rawOrigins = process.env.ALLOWED_ORIGINS || "";
+  const allowedOrigins = rawOrigins
+    ? rawOrigins.split(",").map(o => o.trim()).filter(Boolean)
+    : [];
+
+  function setCors(req, res) {
+    const origin = req.headers.origin || "";
+    const allowed =
+      allowedOrigins.length === 0 ||        // wildcard if none set
+      allowedOrigins.includes("*") ||
+      allowedOrigins.includes(origin) ||
+      origin.endsWith(".hana.ondemand.com") ||
+      origin.endsWith(".joule.only.sap");
+    if (allowed) {
+      res.setHeader("Access-Control-Allow-Origin", origin || "*");
+    }
+    res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Authorization, Content-Type, Accept");
+    res.setHeader("Access-Control-Allow-Credentials", "true");
+  }
+
+  app.use((req, res, next) => {
+    setCors(req, res);
+    if (req.method === "OPTIONS") return res.sendStatus(204);
+    next();
+  });
+
+  app.use(express.json());
+
+  // ── Health (no auth) ─────────────────────────────────────────────────────
+  app.get("/health", (_req, res) => {
+    res.json({
+      status: "ok",
+      service: "ltvf-mcp-server",
+      transport: "http+sse",
+      auth: getAuthInfo(),
+      tools: ["get_ltvf_status", "fetch_ltvf_data", "query_ltvf"],
+    });
+  });
+
+  // ── Session store ────────────────────────────────────────────────────────
+  /** @type {Record<string, SSEServerTransport>} */
+  const sessions = {};
+
+  // ── GET /sse — establish SSE stream ──────────────────────────────────────
+  app.get("/sse", xsuaaAuth, async (req, res) => {
+    console.log("[mcp-http] New SSE connection from", req.headers.origin || req.ip);
+    try {
+      const transport = new SSEServerTransport("/messages", res);
+      const sessionId = transport.sessionId;
+      sessions[sessionId] = transport;
+
+      transport.onclose = () => {
+        console.log("[mcp-http] SSE closed, session:", sessionId);
+        delete sessions[sessionId];
+      };
+
+      // Each SSE connection gets its own server instance so tool state is isolated
+      const mcpServer = buildServer();
+      await mcpServer.connect(transport);
+      console.log("[mcp-http] SSE session established:", sessionId);
+    } catch (err) {
+      console.error("[mcp-http] SSE setup error:", err);
+      if (!res.headersSent) res.status(500).send("SSE setup failed");
+    }
+  });
+
+  // ── POST /messages — receive JSON-RPC tool calls ─────────────────────────
+  app.post("/messages", xsuaaAuth, async (req, res) => {
+    const sessionId = req.query.sessionId;
+    if (!sessionId) {
+      return res.status(400).json({ error: "Missing sessionId query parameter" });
+    }
+    const transport = sessions[sessionId];
+    if (!transport) {
+      return res.status(404).json({ error: "Session not found or expired", sessionId });
+    }
+    try {
+      await transport.handlePostMessage(req, res, req.body);
+    } catch (err) {
+      console.error("[mcp-http] Message handling error:", err);
+      if (!res.headersSent) res.status(500).send("Message handling failed");
+    }
+  });
+
+  // ── Start listening ──────────────────────────────────────────────────────
+  app.listen(PORT, () => {
+    console.log(`[mcp-http] LTVF MCP Server (HTTP+SSE) listening on port ${PORT}`);
+    console.log(`[mcp-http]   GET  http://localhost:${PORT}/sse      — SSE stream`);
+    console.log(`[mcp-http]   POST http://localhost:${PORT}/messages  — JSON-RPC`);
+    console.log(`[mcp-http]   GET  http://localhost:${PORT}/health    — health check`);
+    console.log(`[mcp-http]   Auth: ${process.env.XSUAA_DISABLED === "true" ? "DISABLED (dev mode)" : "XSUAA JWT"}`);
+  });
+
+  // ── Graceful shutdown ────────────────────────────────────────────────────
+  async function shutdown() {
+    console.log("[mcp-http] Shutting down...");
+    for (const [id, t] of Object.entries(sessions)) {
+      try { await t.close(); } catch { /* ignore */ }
+      delete sessions[id];
+    }
+    process.exit(0);
+  }
+  process.on("SIGTERM", shutdown);
+  process.on("SIGINT", shutdown);
+}
+
+// ── MCP Server factory ─────────────────────────────────────────────────────
+// Returns a fresh Server instance with all tools registered.
+// Called once for stdio mode, once per SSE session for HTTP mode.
+
+function buildServer() {
+  const srv = new Server(
+    { name: "ltvf-sap-server", version: "2.0.0" },
+    { capabilities: { tools: {} } }
+  );
+
+  // List tools — identical to the global server registration below
+  srv.setRequestHandler(ListToolsRequestSchema, async () => ({
+    tools: TOOL_DEFINITIONS,
+  }));
+
+  // Call tools — delegates to the shared handler
+  srv.setRequestHandler(CallToolRequestSchema, callToolHandler);
+
+  return srv;
+}

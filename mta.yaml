@@ -50,6 +50,21 @@ modules:
       - name: ltvf-destination-svc
       - name: ltvf-connectivity-svc
 
+  # ── MCP Server (HTTP+SSE for Joule Hub) ──────────────────────────────────
+  - name: ltvf-mcp-server
+    type: nodejs
+    path: mcp-server
+    parameters:
+      memory: 128M
+      disk-quota: 256M
+      buildpack: nodejs_buildpack
+    properties:
+      MCP_TRANSPORT: http
+      NODE_ENV: production
+      LTVF_BACKEND_URL: https://ltvf-backend.cfapps.us10-003.hana.ondemand.com
+    requires:
+      - name: ltvf-xsuaa
+
 resources:
 
   # ── Destination Service (resolves named BTP destinations) ──────────────────
@@ -65,3 +80,13 @@ resources:
     parameters:
       service: connectivity
       service-plan: lite
+
+  # ── XSUAA Service (auth for MCP Server + future approuter auth) ─────────────
+  - name: ltvf-xsuaa
+    type: org.cloudfoundry.managed-service
+    parameters:
+      service: xsuaa
+      service-plan: application
+      config:
+        xsappname: ltvf-mcp-server
+        tenant-mode: dedicated

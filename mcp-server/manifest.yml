@@ -1,0 +1,28 @@
+---
+# mcp-server/manifest.yml — CF push manifest for LTVF MCP Server (HTTP+SSE mode)
+# Usage: cf push -f mcp-server/manifest.yml
+# Requires: xsuaa service instance named "ltvf-xsuaa" to be created first.
+#
+# Create XSUAA service:
+#   cf create-service xsuaa application ltvf-xsuaa -c mcp-server/xs-security.json
+
+applications:
+  - name: ltvf-mcp-server
+    path: .
+    buildpack: nodejs_buildpack
+    memory: 128M
+    disk_quota: 256M
+    instances: 1
+    command: node index.js
+    health-check-type: http
+    health-check-http-endpoint: /health
+    env:
+      MCP_TRANSPORT: http
+      NODE_ENV: production
+      # SAP connection — set via: cf set-env ltvf-mcp-server SAP_BASE_URL https://...
+      # Or bind the ltvf-destination-svc and use BTP_* vars
+      LTVF_BACKEND_URL: https://ltvf-backend.cfapps.us10-003.hana.ondemand.com
+    services:
+      - ltvf-xsuaa
+      # Optional: bind destination service for BTP-based SAP connectivity
+      # - ltvf-destination-svc

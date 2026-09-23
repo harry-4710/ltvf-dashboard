@@ -1,0 +1,25 @@
+{
+  "xsappname": "ltvf-mcp-server",
+  "tenant-mode": "dedicated",
+  "description": "LTVF MCP Server — XSUAA application security descriptor",
+  "scopes": [
+    {
+      "name": "$XSAPPNAME.mcp.read",
+      "description": "Read LTVF migration quality data via MCP tools"
+    }
+  ],
+  "role-templates": [
+    {
+      "name": "LTVFMCPViewer",
+      "description": "Read-only access to LTVF MCP tools",
+      "scope-references": ["$XSAPPNAME.mcp.read"]
+    }
+  ],
+  "oauth2-configuration": {
+    "token-validity": 3600,
+    "redirect-uris": [
+      "https://*.hana.ondemand.com/**",
+      "https://*.joule.only.sap/**"
+    ]
+  }
+}
