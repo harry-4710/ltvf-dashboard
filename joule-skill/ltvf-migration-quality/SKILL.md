@@ -1,118 +1,145 @@
 ---
 name: ltvf-migration-quality
 description: >
-  Analyze SAP CNVLTVF3 migration test quality for the LTVF project. Use when asked about
-  migration test results, LTVF pass/fail rates, failing test cases, section-level quality,
-  threshold breaches, or SAP data migration health. Fetches live data from the LTVF Dashboard
-  API and produces quality summaries, section drilldowns, and recommendations.
+  Analyze SAP CNVLTVF3 / LTVR migration test quality. Use when asked to create an LTVR
+  dashboard, analyze migration test results, check pass/fail rates, review sign-off status
+  (Approved/Rejected/Re-check), get stream-wise quality stats, or assess overall SAP data
+  migration health. Accepts an uploaded LTVR Excel file or fetches live data from the LTVF
+  Dashboard API, then produces a structured business-oriented quality dashboard.
 license: Proprietary — SAP Internal Use Only
 compatibility: >
-  Requires network access to LTVF Dashboard backend API.
-  Primary: https://ltvf-backend.cfapps.us10-003.hana.ondemand.com
-  Fallback: https://ltvf-dashboard.onrender.com
+  Designed for Joule Work Desktop. Python 3.9+ required for scripts/analyze_ltvr.py.
+  Network access to https://ltvf-backend.cfapps.us10-003.hana.ondemand.com for live data.
 metadata:
   author: hariprasad.velu@sap.com
-  project: CNVLTVF3 SAP S/4HANA Migration
-  version: "1.0"
+  project: CNVLTVF3 / LTVR SAP S/4HANA Migration
+  version: "2.0"
   team: SAP Migration QA
+  dashboard-url: https://d73dca5etrial-dev-ltvf-approuter.cfapps.us10-003.hana.ondemand.com
+  backend-url: https://ltvf-backend.cfapps.us10-003.hana.ondemand.com
 ---
 
-# LTVF Migration Quality Skill
+# LTVF / LTVR Migration Quality Skill
 
-SAP CNVLTVF3 migration test quality analysis. Fetch live data, interpret results, report.
+Analyze SAP data migration quality from LTVR Excel uploads or live SAP data.
+Produces business-oriented dashboards with sign-off stats and stream breakdowns.
 
-## Activate when user asks about
-
-LTVF test results, pass/fail rates, section quality (FI-GL, SD, MM, PP, CO),
-threshold breaches, "What's failing?", "LTVF status?", quality reports, historical trends.
-
----
-
-## API Reference
-
-Base URL: `https://ltvf-backend.cfapps.us10-003.hana.ondemand.com`
-
-- `GET /api/sap/status` — BTP connectivity check (`available: bool`)
-- `GET /api/sap/fetch?system_tag=<tag>` — live SAP data → `LTVFParseResult`
-- `GET /api/results/{system_tag}` — stored historical results
-- `GET /api/results/{system_tag}/{date}` — result for YYYY-MM-DD
-- `GET /api/settings/{system_tag}` — configured thresholds
-
-See `references/REFERENCE.md` for full details.
+## Trigger keywords
+"Create LTVR dashboard", "LTVR dashboard", "analyze migration quality",
+"LTVF status", "which tests are failing?", "sign-off status", "stream breakdown"
 
 ---
 
-## Workflows
+## Step 1 — Determine data source
 
-### 1. Current quality summary
+**A. User uploads an LTVR Excel file** → run `scripts/analyze_ltvr.py <file_path>`
+**B. User wants live SAP data** → `GET /api/sap/fetch?system_tag=<tag>` on the backend
+**C. Neither** → direct user to `metadata.dashboard-url`
 
-1. `GET /api/sap/status` — if `available:false` tell user SAP not connected.
-2. `GET /api/sap/fetch?system_tag=default`
-3. Report: `overall_rate`%, `pass_count`/`warn_count`/`fail_count`, top 5 failing sections,
-   worst 5 individual tests (sort `is_group:false` rows by `rate_pct` asc).
+---
 
-### 2. Section drilldown
+## Step 2 — Detect Sign-Off presence
 
-Fetch data, filter `rows` by `full_path.startsWith(section)`, sort by `rate_pct` asc.
-Mark: ❌ `<80%`  ⚠️ `80-94%`  ✅ `>=95%`
+Check `summary.has_signoff` in the parsed result:
 
-### 3. Historical trend
+- **false** → Scenario 1: Generate one-page overall summary automatically.
+- **true** → Scenario 2: Ask:
+  > "How would you like the dashboard presented?"
+  > 1. Sign-off status only (Approved/Rejected/Re-check)
+  > 2. Overall match rate only
+  > 3. Both sign-off + overall rate
 
-`GET /api/results/{system_tag}` — show `uploaded_at`, `overall_rate`, counts per entry.
-Flag if latest is 2+ points worse than previous.
+---
 
-### 4. Quality report
+## Step 3 — Generate the Dashboard
+
+### Required KPIs (always show)
+- Overall Match Rate — `summary.overall_rate`%
+- Total Test Cases — `summary.total_rows`
+- Data Volume — `summary.total_volume` (LTVR) or `summary.total_equal`
+- Stream-wise stats — per stream: total tests, pass ≥85%, fail <85%
+
+### Sign-off KPIs (when has_signoff = true)
+- Approved: `summary.total_approved` + %
+- Rejected: `summary.total_rejected` + %
+- Re-check: `summary.total_recheck` + %
+
+### Pass threshold
+- LTVR (has_signoff=true): pass ≥ **85%**, fail < 85%
+- LTVF/CNVLTVF3: pass ≥ **95%**, warn 80–94%, fail < 80%
+
+---
+
+## Dashboard Template
 
 ```
-# LTVF Migration Quality Report
-Date: {today} | System: {system_tag}
+# LTVR Migration Quality Dashboard
+Date: {today} | File: {filename} | System: {system_tag}
 
-## Summary
-Rate: {overall_rate}%  ✅{pass} / ⚠️{warn} / ❌{fail}  Total: {total_rows}
-Status: 🟢 HEALTHY / 🟡 AT RISK / 🔴 CRITICAL
+## Executive Summary
+| Metric | Value |
+|---|---|
+| Overall Match Rate | {overall_rate}% 🟢/🟡/🔴 |
+| Total Test Cases | {total_rows} |
+| Data Volume | {total_volume:,} work items |
+| Status | 🟢 HEALTHY / 🟡 AT RISK / 🔴 CRITICAL |
 
-## Top 10 Failing Tests
-{test_name} — {rate_pct}%  diff:{diff}  missing:{missing}
+_Technical: {total_equal:,} equal records, {total_missing} missing, {total_diff} diff._
 
-## Section Breakdown
-| Section | Rate | Pass | Warn | Fail |
+## Sign-Off Summary  [only when has_signoff]
+| Status | Count | % |
+|---|---|---|
+| ✅ Approved | {total_approved} | {pct}% |
+| ❌ Rejected | {total_rejected} | {pct}% |
+| 🔄 Re-check | {total_recheck} | {pct}% |
+
+## Stream Breakdown
+| Stream | Rate | Tests | Pass(≥85%) | Fail | Approved | Rejected | Re-check |
+
+## Top Issues (worst 10 tests)
+{test_name} — {rate_pct}%  diff:{diff}  missing:{missing}  status:{so_status}
 
 ## Recommendations
 - ...
 ```
 
----
-
-## Data Schema
-
-`LTVFParseResult`: `filename`, `summary`, `rows[]`, `sections[]`
-
-`LTVFSummary`: `overall_rate`, `total_equal`, `total_diff`, `total_missing`,
-`total_unexpected`, `total_source`, `total_target`, `total_rows`,
-`pass_count`, `warn_count`, `fail_count`
-
-`LTVFRow`: `id`, `parent_id`, `level`, `test_name`, `full_path`, `is_group`,
-`rate_pct`, `diff`, `accept`, `missing`, `unexpected`, `equal`, `source`, `target`
+**Status rules**: 🟢 HEALTHY = rate≥95% AND fail=0 | 🟡 AT RISK = rate≥80% or any fails | 🔴 CRITICAL = rate<80% or fail>10
 
 ---
 
-## Thresholds (defaults)
+## Exclusion Rules
 
-- ✅ Pass: `rate_pct >= 95`
-- ⚠️ Warn: `80 <= rate_pct < 95`
-- ❌ Fail: `rate_pct < 80`
-
-Check `/api/settings/{system_tag}` first; use those values if present.
-
-Status: **HEALTHY** (rate>=95, fail==0) | **AT RISK** (rate>=80 or any fails) | **CRITICAL** (rate<80 or fail>10)
+1. Rows with `is_group: true` (test_name contains `>`) = stream headers, NOT individual tests
+2. Tests with `(Zero Data)` in name + `equal=0` = expected zero; note separately, NOT failures
+3. Use business language only: "match rate", "data quality", NOT "OOS:Src", "WI(%)", etc.
+4. Do NOT display individual signer names (`signed_by`). Aggregate counts only.
 
 ---
 
-## Errors
+## Running the Script (Option A — file upload)
 
-| Symptom | Response |
-|---|---|
-| `available:false` | SAP BTP not connected |
-| fetch 503 | BTP creds missing — show `missing_vars` |
-| fetch 502 | SAP unreachable — check Cloud Connector |
-| Network error | Try fallback `https://ltvf-dashboard.onrender.com` |
+```bash
+python scripts/analyze_ltvr.py /path/to/LTVR_file.xlsx
+```
+
+Output: JSON with `summary`, `rows`, `sections`. Use as data source for Step 3.
+
+If script unavailable, POST the file to the backend instead:
+```
+POST https://ltvf-backend.cfapps.us10-003.hana.ondemand.com/api/upload
+Content-Type: multipart/form-data; file=<xlsx>
+```
+
+---
+
+## Live API (Option B — no file)
+
+Base: `https://ltvf-backend.cfapps.us10-003.hana.ondemand.com`
+
+- `GET /api/sap/status` — BTP connectivity (`available: bool`)
+- `GET /api/sap/fetch?system_tag=default` — live data → LTVFParseResult
+- `GET /api/results/{system_tag}` — historical results
+- `GET /api/results/{system_tag}/{date}` — result on YYYY-MM-DD
+
+See `references/REFERENCE.md` for full schema.
+
