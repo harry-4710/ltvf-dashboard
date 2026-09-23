@@ -124,23 +124,12 @@ jobs:
 
       - name: Login to CF
         run: |
-          # Try with --origin flag first (SAP SSO accounts)
-          if [ -n "${{ secrets.CF_ORIGIN }}" ]; then
-            cf login \
-              -a "${{ secrets.CF_API }}" \
-              -u "${{ secrets.CF_USER }}" \
-              -p "${{ secrets.CF_PASSWORD }}" \
-              -o "${{ secrets.CF_ORG }}" \
-              -s "${{ secrets.CF_SPACE }}" \
-              --origin "${{ secrets.CF_ORIGIN }}"
-          else
-            cf login \
-              -a "${{ secrets.CF_API }}" \
-              -u "${{ secrets.CF_USER }}" \
-              -p "${{ secrets.CF_PASSWORD }}" \
-              -o "${{ secrets.CF_ORG }}" \
-              -s "${{ secrets.CF_SPACE }}"
-          fi
+          cf login \
+            -a "${{ secrets.CF_API }}" \
+            -u "${{ secrets.CF_USER }}" \
+            -p "${{ secrets.CF_PASSWORD }}" \
+            -o "${{ secrets.CF_ORG }}" \
+            -s "${{ secrets.CF_SPACE }}"
 
       - name: Build MTA archive
         run: mbt build
