@@ -1,4 +1,4 @@
----
+﻿---
 applications:
   - name: ltvf-backend
     memory: 256M
@@ -9,6 +9,30 @@ applications:
     command: uvicorn main:app --host 0.0.0.0 --port $PORT
     health-check-type: http
     health-check-http-endpoint: /api/health
+    # CF managed services — credentials auto-injected as VCAP_SERVICES
+    # btp_client.py reads VCAP_SERVICES automatically when these are bound.
+    # Create these services first:
+    #   cf create-service destination    lite ltvf-destination-svc
+    #   cf create-service connectivity   lite ltvf-connectivity-svc
+    services:
+      - ltvf-destination-svc
+      - ltvf-connectivity-svc
     env:
+      # CORS: restrict to approuter URL in production
+      ALLOWED_ORIGINS: "https://d73dca5etrial-dev-ltvf-approuter.cfapps.us10-003.hana.ondemand.com"
+      # SharePoint scheduled export (set USE_MOCK_SCHEDULED=false + real creds to enable)
       USE_MOCK_SCHEDULED: "true"
-      ALLOWED_ORIGINS: "*"
+      # SAP Destination name in BTP cockpit (must match exactly)
+      SAP_DESTINATION_NAME: "LTVF_ONPREMISE"
+      # OData service path on SAP (standard CNVLTVF3 path)
+      SAP_ODATA_SERVICE: "/sap/opu/odata/sap/CNVLTVF3_SRV"
+      # OData entity set name
+      ODATA_ENTITY_SET: "LTVFResultSet"
+      # --- Optional: explicit BTP credentials (only needed if NOT binding CF services above)
+      # --- When CF services are bound, VCAP_SERVICES is used automatically.
+      # BTP_TOKEN_URL: "https://<subdomain>.authentication.us10.hana.ondemand.com/oauth/token"
+      # BTP_DEST_CLIENT_ID: "<clientid-from-destination-service-key>"
+      # BTP_DEST_CLIENT_SECRET: "<clientsecret-from-destination-service-key>"
+      # BTP_DEST_SVC_URL: "https://destination-configuration.cfapps.us10-003.hana.ondemand.com"
+      # BTP_CONN_PROXY_HOST: "connectivity.cf.us10-003.hana.ondemand.com"
+      # BTP_CONN_PROXY_PORT: "20003"

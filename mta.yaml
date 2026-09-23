@@ -1,9 +1,10 @@
-_schema-version: "3.1"
+﻿_schema-version: "3.1"
 ID: ltvf-dashboard
 version: 1.0.0
 
 modules:
 
+  # ── Frontend build (produces dist/ artefacts for approuter) ────────────────
   - name: ltvf-frontend
     type: html5
     path: frontend
@@ -15,6 +16,7 @@ modules:
       build-result: dist
       supported-platforms: []
 
+  # ── SAP Approuter (serves static frontend + proxies /api/* to backend) ──────
   - name: ltvf-approuter
     type: approuter.nodejs
     path: approuter
@@ -22,8 +24,6 @@ modules:
       memory: 256M
       disk-quota: 512M
       buildpack: nodejs_buildpack
-      env:
-        NODE_VERSION: 20
     build-parameters:
       builder: npm
       requires:
@@ -35,6 +35,7 @@ modules:
     requires:
       - name: ltvf-destination-svc
 
+  # ── Python FastAPI backend ─────────────────────────────────────────────────
   - name: ltvf-backend
     type: python.cflinuxfs4
     path: backend
@@ -45,11 +46,22 @@ modules:
       builder: custom
       commands: []
       supported-platforms: []
+    requires:
+      - name: ltvf-destination-svc
+      - name: ltvf-connectivity-svc
 
 resources:
 
+  # ── Destination Service (resolves named BTP destinations) ──────────────────
   - name: ltvf-destination-svc
     type: org.cloudfoundry.managed-service
     parameters:
       service: destination
+      service-plan: lite
+
+  # ── Connectivity Service (on-premise proxy for Cloud Connector) ─────────────
+  - name: ltvf-connectivity-svc
+    type: org.cloudfoundry.managed-service
+    parameters:
+      service: connectivity
       service-plan: lite
