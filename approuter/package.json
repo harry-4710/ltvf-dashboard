@@ -2,12 +2,12 @@
   "name": "ltvf-approuter",
   "version": "1.0.0",
   "dependencies": {
-    "@sap/approuter": "^16"
+    "@sap/approuter": "16.9.0"
   },
   "scripts": {
     "start": "node node_modules/@sap/approuter/approuter.js"
   },
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=18.0.0 <=20.99.99"
   }
 }

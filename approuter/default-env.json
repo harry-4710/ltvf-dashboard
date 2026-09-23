@@ -1,0 +1,9 @@
+{
+  "destinations": [
+    {
+      "name": "ltvf-backend",
+      "url": "http://ltvf-backend.cfapps.us10-003.hana.ondemand.com",
+      "forwardAuthToken": false
+    }
+  ]
+}

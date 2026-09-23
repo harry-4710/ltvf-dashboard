@@ -21,6 +21,9 @@ modules:
     parameters:
       memory: 256M
       disk-quota: 512M
+      buildpack: nodejs_buildpack
+      env:
+        NODE_VERSION: 20
     build-parameters:
       builder: npm
       requires:
