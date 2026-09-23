@@ -124,17 +124,21 @@ jobs:
 
       - name: Login to CF
         run: |
-          # Method 1: Refresh token (preferred - from SSO session)
-          if [ -n "${{ secrets.CF_REFRESH_TOKEN }}" ]; then
-            echo "Using CF refresh token..."
-            mkdir -p ~/.cf
-            cat > ~/.cf/config.json << EOF
-          {
+          mkdir -p ~/.cf
+          # Get UAA endpoint from CF API
+          UAA_ENDPOINT=$(curl -s "${{ secrets.CF_API }}/v2/info" | python3 -c "import sys,json; print(json.load(sys.stdin)['token_endpoint'])")
+          AUTH_ENDPOINT=$(curl -s "${{ secrets.CF_API }}/v2/info" | python3 -c "import sys,json; print(json.load(sys.stdin)['authorization_endpoint'])")
+          echo "UAA: $UAA_ENDPOINT"
+          echo "Auth: $AUTH_ENDPOINT"
+          # Write CF config with refresh token
+          python3 - << 'PYEOF'
+          import json, os
+          config = {
             "ConfigVersion": 3,
-            "Target": "${{ secrets.CF_API }}",
+            "Target": os.environ["CF_API"],
             "APIVersion": "3.226.0",
-            "AuthorizationEndpoint": "https://login.cf.us10-003.hana.ondemand.com",
-            "UAAEndpoint": "https://uaa.cf.us10-003.hana.ondemand.com",
+            "AuthorizationEndpoint": os.environ["AUTH_ENDPOINT"],
+            "UAAEndpoint": os.environ["UAA_ENDPOINT"],
             "UAAOAuthClient": "cf",
             "UAAOAuthClientSecret": "",
             "UAAGrantType": "",
@@ -142,38 +146,33 @@ jobs:
             "SSHOAuthClient": "ssh-proxy",
             "MinCLIVersion": "",
             "MinRecommendedCLIVersion": "",
-            "RefreshToken": "${{ secrets.CF_REFRESH_TOKEN }}",
-            "OrganizationFields": {
-              "GUID": "",
-              "Name": "${{ secrets.CF_ORG }}"
-            },
-            "SpaceFields": {
-              "GUID": "",
-              "Name": "${{ secrets.CF_SPACE }}"
-            },
-            "SSLDisabled": false,
+            "RefreshToken": os.environ["CF_REFRESH_TOKEN"],
+            "OrganizationFields": {"GUID": "", "Name": os.environ["CF_ORG"]},
+            "SpaceFields": {"GUID": "", "Name": os.environ["CF_SPACE"]},
+            "SSLDisabled": False,
             "AsyncTimeout": 0,
             "Trace": "",
             "ColorEnabled": "",
             "Locale": "",
-            "PluginRepos": [{"Name": "CF-Community","URL": "https://plugins.cloudfoundry.org"}],
+            "PluginRepos": [{"Name": "CF-Community", "URL": "https://plugins.cloudfoundry.org"}],
             "HTTPSProxy": "",
-            "CFOnK8s": {"Enabled": false,"AuthInfo": ""}
+            "CFOnK8s": {"Enabled": False, "AuthInfo": ""}
           }
-          EOF
-            cf target -o "${{ secrets.CF_ORG }}" -s "${{ secrets.CF_SPACE }}"
-            cf oauth-token > /dev/null && echo "✅ Authenticated via refresh token"
-
-          # Method 2: App password fallback
-          else
-            echo "Using username/password..."
-            cf login \
-              -a "${{ secrets.CF_API }}" \
-              -u "${{ secrets.CF_USER }}" \
-              -p "${{ secrets.CF_PASSWORD }}" \
-              -o "${{ secrets.CF_ORG }}" \
-              -s "${{ secrets.CF_SPACE }}"
-          fi
+          path = os.path.expanduser("~/.cf/config.json")
+          with open(path, "w") as f:
+            json.dump(config, f, indent=2)
+          print("CF config written to", path)
+          PYEOF
+          cf api "${{ secrets.CF_API }}"
+          cf target -o "${{ secrets.CF_ORG }}" -s "${{ secrets.CF_SPACE }}"
+          cf oauth-token > /dev/null && echo "✅ Authenticated via refresh token"
+        env:
+          CF_API: ${{ secrets.CF_API }}
+          CF_ORG: ${{ secrets.CF_ORG }}
+          CF_SPACE: ${{ secrets.CF_SPACE }}
+          CF_REFRESH_TOKEN: ${{ secrets.CF_REFRESH_TOKEN }}
+          UAA_ENDPOINT: ""
+          AUTH_ENDPOINT: ""
 
       - name: Build MTA archive
         run: mbt build
