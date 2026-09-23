@@ -5,8 +5,8 @@
 REPO="$(cd "$(dirname "$0")" && pwd)"
 cd "$REPO"
 
-CF_API="https://api.cf.sap.hana.ondemand.com"
-CF_ORG="DMLT BTP Global Account (Canary)_bdv-space"
+CF_API="https://api.cf.us10-003.hana.ondemand.com"
+CF_ORG="d73dca5etrial"
 CF_SPACE="dev"
 
 echo ""
@@ -45,5 +45,5 @@ done
 echo ""
 cf apps | grep ltvf
 echo ""
-echo "  ✅ Dashboard: https://bdv-space-dev-ltvf-approuter.cfapps.sap.hana.ondemand.com"
-echo "  ✅ Backend:   https://ltvf-backend.cfapps.sap.hana.ondemand.com/api/health"
+echo "  ✅ Dashboard: https://d73dca5etrial-dev-ltvf-approuter.cfapps.us10-003.hana.ondemand.com"
+echo "  ✅ Backend:   https://ltvf-backend.cfapps.us10-003.hana.ondemand.com/api/health"
