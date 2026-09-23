@@ -1,7 +1,7 @@
 {
   "xsappname": "ltvf-mcp-server",
   "tenant-mode": "dedicated",
-  "description": "LTVF MCP Server — XSUAA application security descriptor",
+  "description": "LTVF MCP Server - XSUAA application security descriptor",
   "scopes": [
     {
       "name": "$XSAPPNAME.mcp.read",
