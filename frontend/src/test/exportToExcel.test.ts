@@ -20,6 +20,12 @@ vi.mock('xlsx', () => ({
   writeFile: mockWriteFile,
 }))
 
+// ── helpers — cast mock.calls to unknown[][] to satisfy strict TS ─────────────
+
+function calls(mock: ReturnType<typeof vi.fn>): unknown[][] {
+  return mock.mock.calls as unknown[][]
+}
+
 // ── fixture ───────────────────────────────────────────────────────────────────
 
 const mockResult: LTVFParseResult = {
@@ -72,39 +78,40 @@ describe('exportToExcel()', () => {
 
   it('output filename strips the original extension and appends _export.xlsx', () => {
     exportToExcel(mockResult)
-    const [, filename] = mockWriteFile.mock.calls[0]
+    const [, filename] = calls(mockWriteFile)[0]
     expect(filename).toBe('LTVR_P&G_NALA_export.xlsx')
   })
 
   it('creates exactly two sheets (Summary + Detail Rows)', () => {
     exportToExcel(mockResult)
     expect(mockBookAppend).toHaveBeenCalledTimes(2)
-    const sheetNames = mockBookAppend.mock.calls.map((c: unknown[]) => c[2])
+    const sheetNames = calls(mockBookAppend).map(c => c[2])
     expect(sheetNames).toContain('Summary')
     expect(sheetNames).toContain('Detail Rows')
   })
 
   it('Summary sheet contains the overall_rate value', () => {
     exportToExcel(mockResult)
-    const summaryData = mockJsonToSheet.mock.calls[0][0] as Record<string, unknown>[]
+    const summaryData = calls(mockJsonToSheet)[0][0] as Record<string, unknown>[]
     expect(summaryData[0]['Overall Rate (%)']).toBe(90)
   })
 
   it('Summary sheet contains total_rows', () => {
     exportToExcel(mockResult)
-    const summaryData = mockJsonToSheet.mock.calls[0][0] as Record<string, unknown>[]
+    const summaryData = calls(mockJsonToSheet)[0][0] as Record<string, unknown>[]
     expect(summaryData[0]['Total Rows']).toBe(3)
   })
 
   it('Detail Rows sheet is built from data.rows array', () => {
     exportToExcel(mockResult)
-    const detailData = mockJsonToSheet.mock.calls[1][0]
+    const detailData = calls(mockJsonToSheet)[1][0]
     expect(detailData).toBe(mockResult.rows)
   })
 
   it('Summary sheet includes filename', () => {
     exportToExcel(mockResult)
-    const summaryData = mockJsonToSheet.mock.calls[0][0] as Record<string, unknown>[]
+    const summaryData = calls(mockJsonToSheet)[0][0] as Record<string, unknown>[]
     expect(summaryData[0]['Filename']).toBe('LTVR_P&G_NALA.xlsx')
   })
 })
+
