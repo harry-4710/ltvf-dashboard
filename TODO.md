@@ -14,7 +14,7 @@ Last updated: 2026-08-07
 - [ ] **Auth / role-based access** — add OAuth (SAP IAS or Azure AD) so the dashboard is protected behind login; map roles to read-only vs admin
 - [ ] **Email alerts** — trigger an email when overall rate drops below the warn threshold after a scheduled fetch
 - [ ] **Multi-file batch compare** — allow loading 2+ files side-by-side in the Compare tab instead of just two
-- [ ] **Unit tests** — add Vitest tests for `exportToExcel.ts`, `history.ts`, classification logic in `SummaryCards`
+- [x] **Unit tests** — Vitest 2.1.9 + jsdom; 39 tests across `classify.test.ts`, `exportToCSV.test.ts`, `exportToExcel.test.ts`, `history.test.ts`; run with `npm test` (v2.2.0)
 
 ## Backlog / Nice-to-Have
 

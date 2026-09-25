@@ -2,7 +2,26 @@
 
 All notable changes to the LTVF Cloud Dashboard are documented here.
 
-## [2.1.0] — 2026-08-07
+## [2.2.0] — 2026-09-25
+
+### Added
+
+- **Unit test suite** — Vitest 2.1.9 + jsdom; 39 tests across 4 test files, all passing
+  - `classify.test.ts` — 13 tests covering `classify()` (null, boundary, LTVR thresholds) and `recomputeSummary()` (group skipping, null rate skipping, empty array, field preservation)
+  - `exportToCSV.test.ts` — 7 tests covering download trigger, filename derivation, Blob creation, BOM, CSV header, comma-escaping, and quote-escaping
+  - `exportToExcel.test.ts` — 7 tests covering SheetJS mock (via `vi.hoisted`), writeFile call, filename, two-sheet structure, Summary content, Detail Rows passthrough
+  - `history.test.ts` — 12 tests covering `loadHistory` (empty/invalid/valid), `saveToHistory` (prepend, id, cap-at-5, persistence), `deleteFromHistory` (remove, preserve others, empty result)
+- **`vitest.config.ts`** — jsdom environment, globals, `@testing-library/jest-dom` setup
+- **`src/test/setup.ts`** — imports `@testing-library/jest-dom` matchers
+- **Test scripts in `package.json`** — `npm test` (run once), `npm run test:watch` (interactive), `npm run test:coverage` (v8 coverage)
+
+### Fixed (backend + deploy)
+
+- **Upload limit raised from 10 MB → 200 MB** — `backend/main.py` `_MAX_UPLOAD_BYTES`; resolves HTTP 413 on large LTVR files (e.g. 88 MB)
+- **CF memory raised from 256 MB → 1024 MB** — `backend/manifest.yml`; resolves OOM crash on large xlsx parse
+- **CF push from correct directory** — `cd backend && cf push ltvf-backend`; previously pushed from repo root causing `uvicorn: command not found`
+
+
 
 ### Added
 
