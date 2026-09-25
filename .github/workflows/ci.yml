@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node-version: [20]
+        node-version: [22]
     defaults:
       run:
         working-directory: frontend
@@ -31,6 +31,9 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Run unit tests (Vitest)
+        run: npm test
 
       - name: TypeScript type-check
         run: npx tsc --noEmit
@@ -104,7 +107,7 @@ jobs:
       - name: Set up Node.js (for MBT build)
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
       - name: Install MBT (MTA Build Tool)
         run: npm install -g mbt
