@@ -1,8 +1,8 @@
 ﻿---
 applications:
   - name: ltvf-backend
-    memory: 256M
-    disk_quota: 1024M
+    memory: 1024M
+    disk_quota: 2048M
     instances: 1
     buildpacks:
       - python_buildpack

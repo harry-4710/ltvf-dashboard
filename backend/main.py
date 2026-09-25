@@ -35,7 +35,7 @@ app.add_middleware(
 app.include_router(settings_router)
 app.include_router(results_router)
 
-_MAX_UPLOAD_BYTES = 10 * 1024 * 1024  # 10 MB
+_MAX_UPLOAD_BYTES = 200 * 1024 * 1024  # 200 MB — supports large LTVR exports (e.g. 88 MB)
 
 
 @app.post("/api/upload", response_model=LTVFParseResult, tags=["Parse"],
@@ -45,7 +45,7 @@ async def upload_ltvf(request: Request, file: UploadFile = File(...)):
         raise HTTPException(status_code=400, detail="Only .xlsx or .xls files are accepted.")
     contents = await file.read(_MAX_UPLOAD_BYTES + 1)
     if len(contents) > _MAX_UPLOAD_BYTES:
-        raise HTTPException(status_code=413, detail="File too large. Maximum upload size is 10 MB.")
+        raise HTTPException(status_code=413, detail="File too large. Maximum upload size is 200 MB.")
     try:
         result = parse_excel(contents, file.filename)
         log.info("upload_success filename=%s rows=%d rate=%.1f",

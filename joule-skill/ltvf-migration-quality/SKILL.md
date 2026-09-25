@@ -13,7 +13,7 @@ compatibility: >
 metadata:
   author: hariprasad.velu@sap.com
   project: CNVLTVF3 / LTVR SAP S/4HANA Migration
-  version: "2.0"
+  version: "2.1"
   team: SAP Migration QA
   dashboard-url: https://d73dca5etrial-dev-ltvf-approuter.cfapps.us10-003.hana.ondemand.com
   backend-url: https://ltvf-backend.cfapps.us10-003.hana.ondemand.com
@@ -32,9 +32,41 @@ Produces business-oriented dashboards with sign-off stats and stream breakdowns.
 
 ## Step 1 — Determine data source
 
-**A. User uploads an LTVR Excel file** → run `scripts/analyze_ltvr.py <file_path>`
+**A. User uploads an LTVR Excel file** → send to backend API (see Step 1A below)
 **B. User wants live SAP data** → `GET /api/sap/fetch?system_tag=<tag>` on the backend
 **C. Neither** → direct user to `metadata.dashboard-url`
+
+### Step 1A — Uploading an Excel file (PRIMARY path — works for ALL file sizes)
+
+**Always use the backend API for file uploads.** Do NOT try to read the file inline or run
+a local script first. POST the file directly to the backend regardless of its size:
+
+```
+POST https://ltvf-backend.cfapps.us10-003.hana.ondemand.com/api/upload
+Content-Type: multipart/form-data
+Body: file=<the uploaded .xlsx file>
+```
+
+The backend accepts files up to **200 MB** and returns a full `LTVFParseResult` JSON.
+
+**Example curl command** (Joule can run this):
+```bash
+curl -X POST "https://ltvf-backend.cfapps.us10-003.hana.ondemand.com/api/upload" \
+  -F "file=@/path/to/LTVR_file.xlsx" \
+  --max-time 120
+```
+
+The JSON response contains:
+- `summary` — overall_rate, total_rows, pass_count, fail_count, has_signoff, total_approved, etc.
+- `rows` — all test rows with rate_pct, so_status, diff, missing, etc.
+- `sections` — list of stream/section names
+
+Use this JSON as the data source for Step 3 (Dashboard Generation).
+
+**Fallback (only if backend is unreachable):**
+```bash
+python scripts/analyze_ltvr.py /path/to/LTVR_file.xlsx
+```
 
 ---
 
@@ -116,7 +148,7 @@ _Technical: {total_equal:,} equal records, {total_missing} missing, {total_diff}
 
 ---
 
-## Running the Script (Option A — file upload)
+## Running the Script (Option B — fallback when backend unreachable)
 
 ```bash
 python scripts/analyze_ltvr.py /path/to/LTVR_file.xlsx
@@ -124,15 +156,9 @@ python scripts/analyze_ltvr.py /path/to/LTVR_file.xlsx
 
 Output: JSON with `summary`, `rows`, `sections`. Use as data source for Step 3.
 
-If script unavailable, POST the file to the backend instead:
-```
-POST https://ltvf-backend.cfapps.us10-003.hana.ondemand.com/api/upload
-Content-Type: multipart/form-data; file=<xlsx>
-```
-
 ---
 
-## Live API (Option B — no file)
+## Live API (Option C — no file, live SAP data)
 
 Base: `https://ltvf-backend.cfapps.us10-003.hana.ondemand.com`
 
