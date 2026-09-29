@@ -13,3 +13,6 @@ applications:
       - ltvf-destination-svc
     env:
       ALLOWED_ORIGINS: "*"
+      destinations: >
+        [{"name":"ltvf-backend","url":"https://ltvf-backend.cfapps.us10-003.hana.ondemand.com","forwardAuthToken":false}]
+
