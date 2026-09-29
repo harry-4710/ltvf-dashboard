@@ -6,7 +6,8 @@
       "source": "^/api/(.*)$",
       "destination": "ltvf-backend",
       "authenticationType": "none",
-      "csrfProtection": false
+      "csrfProtection": false,
+      "httpMethods": ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"]
     },
     {
       "source": "^(.*)$",
