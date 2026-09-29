@@ -66,6 +66,20 @@ export default function App() {
   const [thresholds, setThresholds]   = useState({ pass: 95, warn: 80 })
   const [systemTag, setSystemTag]     = useState('')
   const [history, setHistory]         = useState<HistoryEntry[]>(() => loadHistory())
+  const [showDownloadMenu, setShowDownloadMenu] = useState(false)
+  const downloadMenuRef = useRef<HTMLDivElement>(null)
+
+  // Close download menu when clicking outside
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (downloadMenuRef.current && !downloadMenuRef.current.contains(e.target as Node)) {
+        setShowDownloadMenu(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
   const [showHistory, setShowHistory] = useState(false)
   const [uploadedAt, setUploadedAt]   = useState<Date | null>(null)
   const [sapAvailable, setSapAvailable]     = useState(false)
@@ -339,51 +353,92 @@ export default function App() {
                   )}
                 </div>
 
-                {/* Print */}
-                <button
-                  onClick={handlePrint}
-                  className="text-blue-300 hover:text-white transition p-1"
-                  title="Print / Export PDF [P]"
-                >
-                  <Printer size={15} />
-                </button>
+                {/* ── Download dropdown ──────────────────────────── */}
+                <div className="relative" ref={downloadMenuRef}>
+                  <button
+                    onClick={() => setShowDownloadMenu(o => !o)}
+                    className={`flex items-center gap-1 text-xs px-2.5 py-1 rounded transition font-medium ${
+                      showDownloadMenu
+                        ? 'bg-white text-[#003366]'
+                        : 'bg-white/10 hover:bg-white/20 text-white'
+                    }`}
+                    title="Download / Export"
+                  >
+                    <FileDown size={13} />
+                    <span>Download</span>
+                    <span className="text-[10px] opacity-70">▾</span>
+                  </button>
 
-                {/* Export to PDF (works in Joule Space / iframes — no window.print) */}
-                <button
-                  onClick={handleExportPDF}
-                  className="text-blue-300 hover:text-white transition p-1 relative"
-                  title="Download PDF report"
-                >
-                  <FileDown size={15} />
-                  <span className="absolute -bottom-0.5 -right-0.5 text-[8px] font-bold leading-none">PDF</span>
-                </button>
+                  {showDownloadMenu && (
+                    <div className="absolute right-0 top-full mt-1 w-52 bg-white dark:bg-slate-800 rounded-lg shadow-xl border border-gray-200 dark:border-slate-700 z-50 overflow-hidden">
+                      <div className="px-3 py-2 text-[10px] font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wider border-b border-gray-100 dark:border-slate-700">
+                        Export options
+                      </div>
 
-                {/* HTML Report */}
-                <button
-                  onClick={handleReport}
-                  className="text-blue-300 hover:text-white transition p-1"
-                  title="Export HTML Report [R]"
-                >
-                  <Mail size={15} />
-                </button>
+                      {/* PDF */}
+                      <button
+                        onClick={() => { setShowDownloadMenu(false); handleExportPDF() }}
+                        className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-gray-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-slate-700 transition text-left"
+                      >
+                        <span className="w-6 h-6 rounded bg-red-100 dark:bg-red-900/30 flex items-center justify-center text-red-600 dark:text-red-400 text-[10px] font-bold">PDF</span>
+                        <div>
+                          <div className="font-medium">Download PDF</div>
+                          <div className="text-[11px] text-gray-400">Formatted A4 report</div>
+                        </div>
+                      </button>
 
-                {/* Export to CSV */}
-                <button
-                  onClick={handleExportCSV}
-                  className="text-blue-300 hover:text-white transition p-1"
-                  title="Export to CSV"
-                >
-                  <FileText size={15} />
-                </button>
+                      {/* Excel */}
+                      <button
+                        onClick={() => { setShowDownloadMenu(false); handleExport() }}
+                        className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-gray-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-slate-700 transition text-left"
+                      >
+                        <span className="w-6 h-6 rounded bg-green-100 dark:bg-green-900/30 flex items-center justify-center text-green-700 dark:text-green-400 text-[10px] font-bold">XLS</span>
+                        <div>
+                          <div className="font-medium">Download Excel</div>
+                          <div className="text-[11px] text-gray-400">Summary + all rows [E]</div>
+                        </div>
+                      </button>
 
-                {/* Export to Excel */}
-                <button
-                  onClick={handleExport}
-                  className="text-blue-300 hover:text-white transition p-1"
-                  title="Export to Excel [E]"
-                >
-                  <FileDown size={15} />
-                </button>
+                      {/* CSV */}
+                      <button
+                        onClick={() => { setShowDownloadMenu(false); handleExportCSV() }}
+                        className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-gray-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-slate-700 transition text-left"
+                      >
+                        <span className="w-6 h-6 rounded bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-700 dark:text-blue-400 text-[10px] font-bold">CSV</span>
+                        <div>
+                          <div className="font-medium">Download CSV</div>
+                          <div className="text-[11px] text-gray-400">Comma-separated values</div>
+                        </div>
+                      </button>
+
+                      {/* HTML Report */}
+                      <button
+                        onClick={() => { setShowDownloadMenu(false); handleReport() }}
+                        className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-gray-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-slate-700 transition text-left"
+                      >
+                        <span className="w-6 h-6 rounded bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-purple-700 dark:text-purple-400 text-[10px] font-bold">HTM</span>
+                        <div>
+                          <div className="font-medium">Download HTML</div>
+                          <div className="text-[11px] text-gray-400">Standalone report [R]</div>
+                        </div>
+                      </button>
+
+                      <div className="border-t border-gray-100 dark:border-slate-700">
+                        {/* Print */}
+                        <button
+                          onClick={() => { setShowDownloadMenu(false); handlePrint() }}
+                          className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-gray-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-slate-700 transition text-left"
+                        >
+                          <Printer size={14} className="text-gray-400 ml-1" />
+                          <div>
+                            <div className="font-medium">Print [P]</div>
+                            <div className="text-[11px] text-gray-400">Browser print dialog</div>
+                          </div>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
 
                 {/* New upload */}
                 <button
