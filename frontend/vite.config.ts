@@ -1,16 +1,17 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import path from 'path'
 
 export default defineConfig({
   plugins: [react()],
   base: './',
-  // jsPDF pulls in canvg/core-js/dompurify for HTML rendering which we don't use.
-  // Stub them out so Vite/Rollup can bundle jsPDF without these optional deps.
+  // jsPDF uses canvg/dompurify/html2canvas for HTML rendering — we don't use that feature.
+  // Stub them with real files (data: URIs break esbuild dev server).
   resolve: {
     alias: {
-      'canvg':    'data:text/javascript,export default {};export const Canvg={};',
-      'dompurify':'data:text/javascript,export default {sanitize:(s)=>s};',
-      'html2canvas':'data:text/javascript,export default ()=>Promise.resolve({toDataURL:()=>""});',
+      'canvg':      path.resolve(__dirname, 'src/stubs/canvg.js'),
+      'dompurify':  path.resolve(__dirname, 'src/stubs/dompurify.js'),
+      'html2canvas':path.resolve(__dirname, 'src/stubs/html2canvas.js'),
     },
   },
   server: {
