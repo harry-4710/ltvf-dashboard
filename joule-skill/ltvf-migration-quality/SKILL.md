@@ -194,11 +194,35 @@ Pass threshold: **85%** match rate (LTVR standard)
 
 ---
 
-## PDF Output
+## PDF Output & Saving the Dashboard
 
-After generating the dashboard, always tell the user:
-> "To save as PDF: use Print (Ctrl+P) and select Save as PDF, or use the download icon."
-> "This dashboard has been saved to your LTVR Migration Quality - {filename} Space."
+After generating the dashboard content in this Space, always end with this block:
+
+---
+
+### 📊 Open Interactive Dashboard (with PDF Download)
+
+The full interactive dashboard — including the **Download PDF** button — is available at:
+
+**[Open LTVR Dashboard](https://d73dca5etrial-dev-ltvf-approuter.cfapps.us10-003.hana.ondemand.com)**
+
+On the dashboard:
+1. Upload the same LTVR Excel file
+2. Click the **↓ PDF** button in the toolbar (next to the print icon)
+3. A formatted PDF downloads automatically — no print dialog needed
+
+### 💾 Save this Space content
+
+To save the Joule Space summary as a document:
+- Click **`...`** (three dots) at the top right of the Space → **Export** or **Share**
+- Or use the **`...`** next to any card → **Copy** to paste into Word / email
+
+### 📋 Copy dashboard data
+
+To copy the tables from this Space into a presentation or email:
+- Select the text in any card → Ctrl+C → paste into PowerPoint / Word / Outlook
+
+---
 
 ---
 
