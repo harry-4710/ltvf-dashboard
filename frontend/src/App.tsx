@@ -29,9 +29,11 @@ import type { LTVFParseResult } from './types/ltvf'
 import { loadHistory, saveToHistory, deleteFromHistory, type HistoryEntry } from './utils/history'
 import { exportToExcel } from './utils/exportToExcel'
 import { exportToCSV } from './utils/exportToCSV'
+import { exportToPDF } from './utils/exportToPDF'
 import { generateHTMLReport } from './utils/generateReport'
 import { recomputeSummary } from './utils/classify'
 import './index.css'
+
 
 type Tab = 'overview' | 'table' | 'treemap' | 'compare' | 'analytics' | 'trend' | 'history'
 
@@ -211,6 +213,14 @@ export default function App() {
   const handlePrint   = () => window.print()
   const handleExport  = () => { if (data) { exportToExcel(data); toast.success('Excel file downloaded') } }
   const handleExportCSV = () => { if (data) { exportToCSV(data); toast.success('CSV file downloaded') } }
+  const handleExportPDF = () => {
+    if (data) {
+      toast.info('Generating PDF…')
+      exportToPDF(data, thresholds, systemTag, uploadedAt)
+        .then(() => toast.success('PDF downloaded'))
+        .catch(() => toast.error('PDF generation failed'))
+    }
+  }
   const handleReport  = () => { if (data) generateHTMLReport(data, thresholds, systemTag, uploadedAt) }
 
   // Global keyboard shortcuts — skip when focus is inside an input/textarea
@@ -336,6 +346,16 @@ export default function App() {
                   title="Print / Export PDF [P]"
                 >
                   <Printer size={15} />
+                </button>
+
+                {/* Export to PDF (works in Joule Space / iframes — no window.print) */}
+                <button
+                  onClick={handleExportPDF}
+                  className="text-blue-300 hover:text-white transition p-1 relative"
+                  title="Download PDF report"
+                >
+                  <FileDown size={15} />
+                  <span className="absolute -bottom-0.5 -right-0.5 text-[8px] font-bold leading-none">PDF</span>
                 </button>
 
                 {/* HTML Report */}
