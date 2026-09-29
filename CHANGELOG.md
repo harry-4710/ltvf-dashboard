@@ -14,18 +14,18 @@ All notable changes to the LTVF Cloud Dashboard are documented here.
 - **`vitest.config.ts`** — jsdom environment, globals, `@testing-library/jest-dom` setup
 - **`src/test/setup.ts`** — imports `@testing-library/jest-dom` matchers
 - **Test scripts in `package.json`** — `npm test` (run once), `npm run test:watch` (interactive), `npm run test:coverage` (v8 coverage)
+- **Joule Skill v3.0** — `SKILL.md` rewritten per LTVR Dashboard requirements doc: 4 dashboard scenarios (no sign-off / rate only / sign-off only / both), business-oriented language, global parameter exclusion, PDF output instruction, sign-off option prompt before generation
 
-### Fixed (backend + deploy)
+### Fixed
 
 - **Upload limit raised from 10 MB → 200 MB** — `backend/main.py` `_MAX_UPLOAD_BYTES`; resolves HTTP 413 on large LTVR files (e.g. 88 MB)
 - **CF memory raised from 256 MB → 1024 MB** — `backend/manifest.yml`; resolves OOM crash on large xlsx parse
 - **CF push from correct directory** — `cd backend && cf push ltvf-backend`; previously pushed from repo root causing `uvicorn: command not found`
+- **CI Node version 20 → 22** — resolves `jsdom@30` / `jest-dom@7` engine incompatibility in GitHub Actions
+- **`package-lock.json` committed** — `npm ci` now works correctly in CI
+- **TypeScript TS2352/TS2493 errors** — `exportToExcel.test.ts` mock calls cast via `calls()` helper as `unknown[][]`
 
 
-
-### Added
-
-- **Keyboard shortcuts** — global `keydown` listener in `App.tsx`; `E` exports to Excel, `P` prints, `T` toggles dark/light theme. Skipped when focus is inside an input field. Button tooltips updated to show shortcut keys (`[E]`, `[P]`, `[T]`).
 - **Treemap drill-down** — clicking a cell in `TreemapChart` sets `selectedSection` to the cell name and switches to the Detail Table tab. Hint text shown above the chart. `onCellClick` prop added to `TreemapChart`.
 - **Custom CDM tile icon** — `frontend/public/ltvf-tile-icon.svg` (56×56, SAP-blue background with pass/warn/fail bars); `workzone/cdm.json` updated to reference it via the CF approuter URL.
 - **Improved print stylesheet** (`index.css`) — added `print-color-adjust: exact` so chart colours survive PDF export; Recharts SVG text and axis ticks forced to black; AG Grid print overrides for white background/black text; replaced blunt `.dark *` reset with targeted surface selectors to avoid nuking chart fill colours.
