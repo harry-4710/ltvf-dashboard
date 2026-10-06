@@ -16,6 +16,37 @@ import os
 from datetime import date
 
 
+def _readiness_verdict(s):
+    """Return (verdict, colour_class, rationale) based on summary fields."""
+    rate     = s.get("overall_rate", 0)
+    fails    = s.get("fail_count", 0)
+    rejected = s.get("total_rejected", 0)
+    recheck  = s.get("total_recheck", 0)
+    missing  = s.get("total_missing", 0)
+
+    if rate >= 95 and fails == 0 and rejected == 0:
+        return "GO", "badge-healthy", "All active tests meet the ≥95% threshold and no tests have been rejected."
+    elif rate >= 80 and rejected == 0:
+        blocking = []
+        if recheck > 0:
+            blocking.append(f"{recheck} test(s) pending re-check")
+        if fails > 0:
+            blocking.append(f"{fails} test(s) below 85% threshold")
+        if missing > 0:
+            blocking.append(f"{missing:,} missing records")
+        rationale = "Conditional go-live possible. Resolve: " + "; ".join(blocking) + " before sign-off."
+        return "CONDITIONAL GO", "badge-risk", rationale
+    else:
+        blockers = []
+        if rate < 80:
+            blockers.append(f"overall match rate {rate:.1f}% is below the 80% minimum")
+        if rejected > 0:
+            blockers.append(f"{rejected} test(s) explicitly rejected")
+        if fails > 0:
+            blockers.append(f"{fails} test(s) below pass threshold")
+        return "NO-GO", "badge-critical", "Go-live not recommended. Critical blockers: " + "; ".join(blockers) + "."
+
+
 def _status_badge(status):
     s = status.upper()
     if s == "HEALTHY":
@@ -107,7 +138,19 @@ def generate_report(data, output_path=None):
     s = data["summary"]
     filename = data.get("filename", "LTVR_Report")
     scenario = data.get("scenario", "3D")
-    badge_cls, badge_text = _status_badge(s.get("overall_status", "HEALTHY"))
+
+    # Auto-compute overall_status if not provided
+    rate = s.get("overall_rate", 0)
+    if not s.get("overall_status"):
+        if rate >= 95 and s.get("fail_count", 0) == 0:
+            s["overall_status"] = "HEALTHY"
+        elif rate >= 80:
+            s["overall_status"] = "AT RISK"
+        else:
+            s["overall_status"] = "CRITICAL"
+
+    badge_cls, badge_text = _status_badge(s.get("overall_status", "CRITICAL"))
+    verdict, verdict_cls, verdict_rationale = _readiness_verdict(s)
     has_signoff = s.get("has_signoff", False)
     show_signoff = has_signoff and scenario in ("3C", "3D")
     show_matchrate = scenario in ("3A", "3B", "3D")
@@ -116,10 +159,10 @@ def generate_report(data, output_path=None):
     # --- KPI Row 2: Sign-off ---
     signoff_kpis = ""
     if show_signoff:
-        total = s.get("total_rows", 1) or 1
-        appr_pct = round(s.get("total_approved", 0) / total * 100, 1)
-        rej_pct = round(s.get("total_rejected", 0) / total * 100, 1)
-        rc_pct = round(s.get("total_recheck", 0) / total * 100, 1)
+        so_total = (s.get("total_approved", 0) + s.get("total_rejected", 0) + s.get("total_recheck", 0)) or 1
+        appr_pct = round(s.get("total_approved", 0) / so_total * 100, 1)
+        rej_pct  = round(s.get("total_rejected", 0) / so_total * 100, 1)
+        rc_pct   = round(s.get("total_recheck",  0) / so_total * 100, 1)
         signoff_kpis = f'''
     <div class="kpi-grid">
       <div class="kpi-card green"><div class="kpi-label">Approved</div>
@@ -162,9 +205,8 @@ def generate_report(data, output_path=None):
             so_pct = st.get('signoff_pct', 0)
             so_pct_str = f"{so_pct}%" if isinstance(so_pct, (int, float)) else str(so_pct)
             so_tds = f'<td>{appr_td}</td><td>{rej_td}</td><td>{rc_td}</td><td>{so_pct_str}</td>'
-        stream_rows += f'<tr><td class="left"><strong>{st["stream"]}</strong></td><td>{st["total_tests"]}</td><td>{st.get("active_tests",0)}</td>{mr_tds}{so_tds}</tr>\n'
+        stream_rows += f'<tr><td class="left"><strong>{st["stream"]}</strong></td><td>{st["total_tests"]}</td>{mr_tds}{so_tds}</tr>\n'
         t_total += st.get('total_tests', 0)
-        t_active += st.get('active_tests', 0)
         t_pass += st.get('passing', 0)
         t_fail += st.get('failing', 0)
         t_zd += st.get('zero_data', 0)
@@ -173,10 +215,10 @@ def generate_report(data, output_path=None):
         t_rej += st.get('rejected', 0)
         t_rc += st.get('recheck', 0)
 
-    mr_total = f'<td>{t_pass}</td><td>{t_fail}</td><td>~100%</td><td>{t_zd}</td><td>{t_deact}</td>' if show_matchrate else ""
+    mr_total = f'<td>{t_pass}</td><td>{t_fail}</td><td>—</td><td>{t_zd}</td><td>{t_deact}</td>' if show_matchrate else ""
     so_total = f'<td>{t_appr}</td><td>{t_rej}</td><td>{t_rc}</td><td>{round(t_appr/t_total*100,1) if t_total else 0}%</td>' if show_signoff else ""
-    stream_rows += f'<tr class="total-row"><td class="left">TOTAL</td><td>{t_total}</td><td>{t_active}</td>{mr_total}{so_total}</tr>'
-    stream_table = f'<table><thead><tr><th>Stream</th><th>Total</th><th>Active</th>{mr_cols}{so_cols}</tr></thead><tbody>{stream_rows}</tbody></table>'
+    stream_rows += f'<tr class="total-row"><td class="left">TOTAL</td><td>{t_total}</td>{mr_total}{so_total}</tr>'
+    stream_table = f'<table><thead><tr><th>Stream</th><th>Total</th>{mr_cols}{so_cols}</tr></thead><tbody>{stream_rows}</tbody></table>'
 
     # --- Rejected tests ---
     rejected_block = ""
@@ -258,6 +300,43 @@ def generate_report(data, output_path=None):
     {stream_table}
   </div>
   {rejected_block}
+  <div class="section">
+    <div class="section-title">Go-Live Readiness</div>
+    <div style="display:flex;align-items:flex-start;gap:16px;padding:8px 0;">
+      <span class="status-badge {verdict_cls}" style="white-space:nowrap;font-size:13px;padding:6px 18px;">{verdict}</span>
+      <p style="margin:0;font-size:13px;color:#475569;line-height:1.6;">{verdict_rationale}</p>
+    </div>
+    <table style="margin-top:12px;">
+      <thead><tr><th>Criteria</th><th>Target</th><th>Actual</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr>
+          <td class="left">Overall Match Rate</td><td>&ge;95%</td>
+          <td><strong>{s.get("overall_rate",0):.1f}%</strong></td>
+          <td>{"<span class='tag tag-green'>PASS</span>" if s.get("overall_rate",0) >= 95 else "<span class='tag tag-red'>FAIL</span>"}</td>
+        </tr>
+        <tr>
+          <td class="left">Failing Tests (&lt;85%)</td><td>0</td>
+          <td><strong>{s.get("fail_count",0)}</strong></td>
+          <td>{"<span class='tag tag-green'>PASS</span>" if s.get("fail_count",0) == 0 else "<span class='tag tag-red'>FAIL</span>"}</td>
+        </tr>
+        <tr>
+          <td class="left">Rejected Sign-Offs</td><td>0</td>
+          <td><strong>{s.get("total_rejected",0)}</strong></td>
+          <td>{"<span class='tag tag-green'>PASS</span>" if s.get("total_rejected",0) == 0 else "<span class='tag tag-red'>FAIL</span>"}</td>
+        </tr>
+        <tr>
+          <td class="left">Pending Re-checks</td><td>0</td>
+          <td><strong>{s.get("total_recheck",0)}</strong></td>
+          <td>{"<span class='tag tag-green'>PASS</span>" if s.get("total_recheck",0) == 0 else "<span class='tag tag-yellow'>WARN</span>"}</td>
+        </tr>
+        <tr>
+          <td class="left">Missing Records</td><td>&lt;100</td>
+          <td><strong>{s.get("total_missing",0):,}</strong></td>
+          <td>{"<span class='tag tag-green'>PASS</span>" if s.get("total_missing",0) < 100 else "<span class='tag tag-yellow'>WARN</span>"}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
   <div class="section">
     <div class="section-title">Recommendations</div>
     {rec_items}

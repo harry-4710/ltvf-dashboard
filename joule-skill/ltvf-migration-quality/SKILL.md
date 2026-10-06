@@ -150,13 +150,22 @@ pip install weasyprint
 ```
 
 ### 4b — Generate the report
-Write a wrapper script in the scratch directory and run it:
+Write and run this wrapper in the scratch directory:
 ```python
 import json, sys, os
-# Use the absolute path to this skill's scripts/ directory
-# (find it in the skill resources list in your system prompt)
-skill_scripts = r"<ABSOLUTE_PATH_TO_SKILL_SCRIPTS_DIR>"
-sys.path.insert(0, skill_scripts)
+
+# Auto-discover the skill scripts directory relative to this file
+_here = os.path.dirname(os.path.abspath(__file__))
+# Try common locations Joule places skill resources
+for candidate in [
+    os.path.join(_here, "scripts"),
+    os.path.join(_here),
+    os.path.join(os.path.expanduser("~"), ".joule", "skills", "ltvf-migration-quality", "scripts"),
+]:
+    if os.path.isfile(os.path.join(candidate, "generate_html_report.py")):
+        sys.path.insert(0, candidate)
+        break
+
 from generate_html_report import generate_pdf_report
 
 with open("ltvr_data.json", "r", encoding="utf-8") as f:
@@ -191,8 +200,104 @@ Before running the wrapper, write the full parsed data dict to `ltvr_data.json` 
 - **Stream breakdown** — per stream: total tests, passing (>=85%), failing (<85%), match rate %
 - **Technical snapshot** — max 1 line in the upper deck (Key Metrics section): equal records, missing, differences
 - **Sign-off KPIs** — only when has_signoff=true AND user selected option 1 or 3
+- **Go-Live Verdict** — GO | CONDITIONAL GO | NO-GO (see Readiness Rules below)
 
 Pass threshold: **85%** match rate (LTVR standard)
+
+---
+
+## Readiness Rules (Go-Live Verdict)
+
+Compute and display the go-live verdict on every dashboard:
+
+| Condition | Verdict |
+|---|---|
+| overall_rate ≥ 95% AND fail_count = 0 AND total_rejected = 0 | 🟢 **GO** |
+| overall_rate ≥ 80% AND total_rejected = 0 | 🟡 **CONDITIONAL GO** — list blocking items |
+| overall_rate < 80% OR total_rejected > 0 | 🔴 **NO-GO** — list critical blockers |
+
+Blocking items for CONDITIONAL GO: re-check count, failing tests, missing records.
+Critical blockers for NO-GO: match rate below 80%, rejected tests, failing tests.
+
+---
+
+## Data Structuring Instructions (for generate_html_report.py)
+
+When calling `generate_pdf_report(data)`, the `data` dict must have this exact structure:
+
+```python
+data = {
+    "filename": "LTVR_LOG1_MED.xlsx",
+    "scenario": "3D",  # "3A" | "3B" | "3C" | "3D"
+    "summary": {
+        # from API response summary — pass directly
+        "overall_rate": 43.44,
+        "total_rows": 168,
+        "pass_count": 73,
+        "fail_count": 95,
+        "warn_count": 0,
+        "has_signoff": True,
+        "total_approved": 149,
+        "total_rejected": 3,
+        "total_recheck": 16,
+        "total_volume": 3754,
+        "total_equal": 396139419,
+        "total_missing": 80,
+        "total_diff": 0,
+        # optional — auto-computed if omitted:
+        "overall_status": "CRITICAL"
+    },
+    "streams": [
+        {
+            "stream": "23. OBLB",
+            "total_tests": 100,
+            "passing": 54,
+            "failing": 46,
+            "match_rate": 54.0,
+            "zero_data": 10,
+            "deactivated": 5,
+            # sign-off fields (include when scenario is "3C" or "3D"):
+            "approved": 100,
+            "rejected": 0,
+            "recheck": 0,
+            "signoff_pct": 100.0
+        }
+        # ... one entry per section from sections[]
+    ],
+    "rejected_tests": [
+        # optional — only include when total_rejected > 0
+        {
+            "name": "29.115 - ZVXX_TMS1_COSTAL",
+            "stream": "29. TMS",
+            "rate": 0.0,
+            "matching": 0,
+            "missing": 250,
+            "diff": 0,
+            "severity": "HIGH",
+            "root_cause": "Missing source records — investigate selective migration scope"
+        }
+    ],
+    "recommendations": [
+        {
+            "priority": "HIGH",   # HIGH | MEDIUM | LOW
+            "area": "Data Quality",
+            "text": "95 tests are below the 85% pass threshold — root cause analysis required before go-live",
+            "owner": "Migration Team"
+        }
+    ]
+}
+```
+
+**Build `streams[]` from `rows[]`** by grouping leaf rows by `full_path.split(' > ')[0]` and computing:
+- `total_tests` = count of non-excluded leaf rows
+- `passing` = count where rate_pct >= 85
+- `failing` = count where rate_pct < 85
+- `match_rate` = average rate_pct of non-excluded leaves (round to 1dp)
+- `zero_data` = count where "(Zero Data)" in name AND equal=0
+- `deactivated` = count where "Deactivated" or "Migrated" in name
+- `approved/rejected/recheck` = count by so_status value
+
+**Build `recommendations[]`** using the Readiness Rules table above — generate 2–5 items.
 
 ---
 
