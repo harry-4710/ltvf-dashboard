@@ -37,7 +37,7 @@ Returns `LTVFParseResult` with live CNVLTVF3 data via BTP Destination + Cloud Co
 - **502** — SAP unreachable via Cloud Connector
 
 ### `POST /api/upload`
-Upload an LTVF Excel file (.xlsx/.xls). Max 10 MB.
+Upload an LTVF Excel file (.xlsx/.xls). Max **200 MB**.
 Returns `LTVFParseResult`.
 
 ### `GET /api/results/{system_tag}`
@@ -94,7 +94,12 @@ Returns full `LTVFParseResult`.
     "total_rows": 56,
     "pass_count": 38,
     "warn_count": 12,
-    "fail_count": 6
+    "fail_count": 6,
+    "has_signoff": true,
+    "total_approved": 44,
+    "total_rejected": 2,
+    "total_recheck": 10,
+    "total_volume": 45230
   },
   "rows": [ /* LTVFRow[] */ ],
   "sections": ["FI-GL", "SD", "MM", "PP", "CO", "HR"]

@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LTVR Migration Quality Report — {filename}</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+  @media print {
+    body { margin: 0; font-size: 11px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .no-print { display: none; }
+    .container { box-shadow: none; }
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: #f1f5f9;
+    color: #1e293b;
+    line-height: 1.6;
+    padding: 24px;
+  }
+  .container {
+    max-width: 1080px;
+    margin: 0 auto;
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 8px 24px rgba(0,0,0,0.05);
+    overflow: hidden;
+  }
+  .header {
+    background: linear-gradient(135deg, #0f172a 0%, #1e40af 60%, #0ea5e9 100%);
+    color: #fff;
+    padding: 28px 36px 22px;
+  }
+  .header h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.3px; margin-bottom: 2px; }
+  .header .subtitle { font-size: 12px; opacity: 0.75; font-weight: 400; }
+  .header .status-badge {
+    display: inline-block;
+    margin-top: 10px;
+    padding: 4px 14px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+  .badge-healthy { background: rgba(16,185,129,0.9); }
+  .badge-risk { background: rgba(245,158,11,0.9); }
+  .badge-critical { background: rgba(239,68,68,0.9); }
+
+  .section { padding: 22px 36px; border-bottom: 1px solid #f1f5f9; }
+  .section:last-child { border-bottom: none; }
+  .section-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-bottom: 14px;
+  }
+
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .kpi-card {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 14px 16px;
+    text-align: center;
+    transition: box-shadow 0.15s;
+  }
+  .kpi-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+  .kpi-card .kpi-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.7px;
+    color: #94a3b8;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+  .kpi-card .kpi-value { font-size: 22px; font-weight: 700; color: #0f172a; }
+  .kpi-card .kpi-sub { font-size: 10px; color: #94a3b8; margin-top: 2px; }
+  .kpi-card.green { border-left: 3px solid #10b981; }
+  .kpi-card.red { border-left: 3px solid #ef4444; }
+  .kpi-card.yellow { border-left: 3px solid #f59e0b; }
+  .kpi-card.blue { border-left: 3px solid #3b82f6; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th {
+    background: #f8fafc;
+    color: #475569;
+    padding: 8px 12px;
+    text-align: center;
+    font-weight: 600;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid #e2e8f0;
+  }
+  td {
+    padding: 8px 12px;
+    text-align: center;
+    border-bottom: 1px solid #f1f5f9;
+    font-size: 12px;
+  }
+  tr:hover { background: #f8fafc; }
+  tr.total-row {
+    background: #f1f5f9 !important;
+    font-weight: 700;
+    border-top: 2px solid #cbd5e1;
+  }
+  td.left { text-align: left; }
+
+  .tag {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+  }
+  .tag-red { background: #fef2f2; color: #dc2626; }
+  .tag-yellow { background: #fffbeb; color: #d97706; }
+  .tag-green { background: #f0fdf4; color: #16a34a; }
+  .tag-blue { background: #eff6ff; color: #2563eb; }
+  .tag-gray { background: #f8fafc; color: #94a3b8; }
+
+  .tech-snapshot {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-size: 11px;
+    color: #64748b;
+    margin-top: 10px;
+  }
+  .tech-snapshot strong { color: #334155; }
+
+  .rec-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 0;
+    border-bottom: 1px solid #f8fafc;
+  }
+  .rec-item:last-child { border-bottom: none; }
+  .rec-priority { min-width: 52px; text-align: center; padding-top: 1px; }
+  .rec-body { flex: 1; }
+  .rec-body .rec-area { font-size: 12px; font-weight: 600; color: #1e293b; margin-bottom: 1px; }
+  .rec-body .rec-text { font-size: 12px; color: #475569; }
+  .rec-body .rec-owner { font-size: 10px; color: #94a3b8; margin-top: 2px; }
+
+  .footer {
+    padding: 14px 36px;
+    background: #f8fafc;
+    text-align: center;
+    font-size: 10px;
+    color: #94a3b8;
+    border-top: 1px solid #f1f5f9;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- HEADER -->
+  <div class="header">
+    <h1>LTVR Migration Quality Report</h1>
+    <div class="subtitle">File: {filename} &nbsp;&bull;&nbsp; Generated: {today}</div>
+    <span class="status-badge {badge_class}">{overall_status}</span>
+  </div>
+
+  <!-- KPIs ROW 1 -->
+  <div class="section">
+    <div class="section-title">Key Metrics</div>
+    <div class="kpi-grid">
+      <div class="kpi-card green">
+        <div class="kpi-label">Match Rate</div>
+        <div class="kpi-value">{active_match_rate}</div>
+        <div class="kpi-sub">Weighted by volume</div>
+      </div>
+      <div class="kpi-card blue">
+        <div class="kpi-label">Total Tests</div>
+        <div class="kpi-value">{total_tests}</div>
+        <div class="kpi-sub">{active_tests} active &middot; {zero_data_count} zero &middot; {deactivated_count} deactivated</div>
+      </div>
+      <div class="kpi-card green">
+        <div class="kpi-label">Passing</div>
+        <div class="kpi-value">{pass_count} / {active_tests}</div>
+        <div class="kpi-sub">Above 85% threshold</div>
+      </div>
+      <div class="kpi-card blue">
+        <div class="kpi-label">Data Volume</div>
+        <div class="kpi-value">{volume_short}</div>
+        <div class="kpi-sub">{total_volume} records</div>
+      </div>
+    </div>
+
+    <!-- KPIs ROW 2: Sign-Off (include ONLY if has_signoff=true AND user selected option 1 or 3) -->
+    <!-- {signoff_kpis_block} -->
+
+    <div class="tech-snapshot">
+      <strong>Snapshot:</strong> {total_equal} matching &nbsp;&bull;&nbsp; {total_missing} missing &nbsp;&bull;&nbsp; {total_diff} differences &nbsp;&bull;&nbsp; {total_unexpected} unexpected
+    </div>
+  </div>
+
+  <!-- STREAM PERFORMANCE TABLE -->
+  <div class="section">
+    <div class="section-title">Stream Performance</div>
+    {stream_table}
+  </div>
+
+  <!-- REJECTED TESTS (only if total_rejected > 0) -->
+  <!-- {rejected_tests_block} -->
+
+  <!-- SIGN-OFF STATUS (only if has_signoff and user selected option 1 or 3) -->
+  <!-- {signoff_status_block} -->
+
+  <!-- RECOMMENDATIONS -->
+  <div class="section">
+    <div class="section-title">Recommendations</div>
+    {recommendations_block}
+  </div>
+
+  <div class="footer">
+    LTVR Migration Quality Report &nbsp;&bull;&nbsp; {filename} &nbsp;&bull;&nbsp; {today} &nbsp;&bull;&nbsp; Generated by Joule — LTVF Migration Quality Skill v4.0
+  </div>
+
+</div>
+</body>
+</html>

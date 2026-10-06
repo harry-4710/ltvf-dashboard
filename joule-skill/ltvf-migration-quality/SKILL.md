@@ -1,23 +1,15 @@
-﻿---
+---
 name: ltvf-migration-quality
-description: >
-  Analyze SAP CNVLTVF3 / LTVR migration test quality. Triggered when user says
-  "Create LTVR dashboard" or similar. Prompts user to upload an LTVR Excel file,
-  validates it, detects sign-off presence, asks user for preferred view (when
-  sign-off exists), then generates a professional business-oriented dashboard
-  suitable for customers and business stakeholders. Final dashboard is PDF-ready.
-license: Proprietary - SAP Internal Use Only
+description: >-
+  Analyze SAP CNVLTVF3 / LTVR migration test quality. Use when asked to create an LTVR dashboard, analyze migration test results, check pass/fail rates, review sign-off status (Approved/Rejected/Re-check), get stream-wise quality stats, or assess overall SAP data migration health. Accepts an uploaded LTVR Excel file or fetches live data from the LTVF Dashboard API, then produces a visual card-based Space dashboard and a downloadable PDF report (HTML fallback if PDF unavailable).
 metadata:
-  author: hariprasad.velu@sap.com
-  version: "3.0"
-  backend-url: https://ltvf-backend.cfapps.us10-003.hana.ondemand.com
-  dashboard-url: https://d73dca5etrial-dev-ltvf-approuter.cfapps.us10-003.hana.ondemand.com
+  version: "5.0"
 ---
 
 # LTVF / LTVR Migration Quality Skill
 
 Business-oriented LTVR quality dashboard for customers and business stakeholders.
-Minimal technical jargon. Maximum insight.
+Minimal technical jargon. Maximum insight. Modern visual cards.
 
 ---
 
@@ -31,6 +23,7 @@ Activate when user says any of:
 - "LTVF status"
 - "Sign-off dashboard"
 - "Check test results"
+- "Validate LTVR file"
 
 **On trigger respond:**
 > "Please upload your LTVR Excel file (.xlsx) and I'll generate your migration quality dashboard."
@@ -53,92 +46,139 @@ Response JSON fields used:
 - rows[]: rate_pct, so_status, is_group, test_name, section
 - sections[]: stream names
 
-Fallback only if backend unreachable: `python scripts/analyze_ltvr.py <file>`
+Fallback only if backend unreachable: parse the Excel locally using openpyxl with the following logic:
+- Read all rows from the first sheet
+- Identify group rows (Test Name ending with ">") vs leaf test rows
+- Extract sections from group row names (e.g. "3. Test cases > 2. High > 23. OBLB >" -> stream "OBLB")
+- Classify leaf rows: Zero Data ("(Zero Data)" in name + equal=0), Deactivated ("Deactivated" or "Migrated" in name), Active (all others with rate > 0)
+- Detect sign-off from S/O column values (Approved, Rejected, Re-check)
 
 ---
 
 ## Step 2 — Detect Sign-Off
 
-Check `summary.has_signoff`:
+Check `summary.has_signoff` AND the actual sign-off counts:
 
-**false** -> Go directly to Step 3A. No question needed.
+**No sign-off** → Go directly to Step 3A (no question needed):
+- `has_signoff` is false, OR
+- Sign-off column exists but all values are blank: `total_approved + total_rejected + total_recheck = 0`
 
-**true** -> Ask the user:
-> "Your file contains sign-off data. How would you like the dashboard?"
-> 1. Sign-off status (Approved / Rejected / Re-check statistics)
+**Sign-off present** → Ask the user:
+> "Your file contains sign-off data. How would you like the dashboard to be presented?"
+> 1. Sign-off status statistics (Approved / Rejected / Re-check counts)
 > 2. Overall match rate (%) only
-> 3. Both sign-off status and overall match rate
+> 3. Both — sign-off statistics and overall match rate
 
 Wait for selection, then proceed to the matching Step 3 section.
 
+---
+
+## Step 3 — Build the Space Dashboard (Visual Cards)
+
+Create a Space named **"LTVR Migration Quality — {filename}"**.
+
+Use visual card types for a clean, scannable dashboard. Aim for **5–7 focused cards**.
+
+### Card Layout — All Scenarios
+
+**Card 1 — Overall Status (size: S, hint: kpi)**
+```
+Metric: Overall Match Rate
+Value: {overall_rate}%
+Status: HEALTHY (>=95%) | AT RISK (80-94%) | CRITICAL (<80%)
+```
+
+**Card 2 — Key Metrics (size: M, hint: kpi)**
+```
+Total Tests: {total_rows}
+Active Passing: {pass_count}/{active_tests}
+Data Volume: {total_volume} records
+Technical Snapshot (1 line, upper deck): {total_equal} matching · {total_missing} missing · {total_diff} differences
+```
+
+**Card 3 — Stream Match Rates (size: L, hint: chart)**
+Bar chart showing match rate % per stream. Colour-code bars: green >=85%, yellow 70-84%, red <70%.
+
+**Card 4 — Stream Performance Detail (size: L, hint: table)**
+Columns: Stream | Total Tests | Active | Passing (>=85%) | Failing (<85%) | Match Rate %
+Keep the table compact — no extra decoration.
+
+**Card 5 — Observations & Recommendations (size: M, hint: text)**
+Bulleted list of 2–4 key findings + prioritised actions with RED/YELLOW/GREEN/BLUE tags.
+
+### Additional Cards for Sign-Off Scenarios
+
+**If user selected option 1 (sign-off only) or option 3 (both):**
+
+**Card 6 — Sign-Off Summary (size: S, hint: kpi)**
+```
+Approved: {total_approved}
+Rejected: {total_rejected}
+Re-check: {total_recheck}
+```
+
+**Card 7 — Sign-Off by Stream (size: L, hint: table)**
+Columns: Stream | Total | Approved | Rejected | Re-check | Sign-Off %
+
+### Scenario-Specific Notes
+
+- **3A (no sign-off):** Cards 1–5 only.
+- **3B (match rate only):** Cards 1–5 only. Same as 3A.
+- **3C (sign-off only):** Cards 1, 2 (replace match rate focus with sign-off counts), 6, 7, 5. Skip the match rate chart (Card 3) and match rate table (Card 4).
+- **3D (both):** All cards 1–7.
+
+### Card Sizing Guide
+
+| Card Type | Size | Hint |
+|---|---|---|
+| Single KPI (match rate, status) | S | kpi |
+| Multi-metric KPI row | M | kpi |
+| Bar chart (stream rates) | L | chart |
+| Data table (stream detail) | L | table |
+| Observations / recommendations | M | text |
 
 ---
 
-## Step 3A — No Sign-Off Dashboard (auto-generated, one page)
+## Step 4 — Generate PDF Report (ALWAYS — every scenario)
 
-Focus: business outcomes and key observations. Technical details max 1 line only.
+After the Space dashboard, ALWAYS generate a downloadable PDF report.
 
+### 4a — Install the PDF library
+Run as a standalone shell command (NOT inside a Python script — the outer shell has network access):
 ```
-LTVR Migration Quality Dashboard | {filename} | {today}
------------------------------------------------------
-Overall Match Rate  {overall_rate}%  [green/yellow/red]
-Total Test Cases    {total_rows}
-Overall Status      HEALTHY / AT RISK / CRITICAL
-Data Volume         {total_volume} work items
-[1 line only] {total_equal} matching records - {total_missing} missing - {total_diff} differences
------------------------------------------------------
-STREAM PERFORMANCE
-| Stream | Total Tests | Passing (>=85%) | Failing (<85%) | Match Rate |
------------------------------------------------------
-KEY OBSERVATIONS
-- [Top business finding in plain language]
-- [Second key finding]
-- [Zero-data or deactivated note if present]
-RECOMMENDATIONS
-[2-4 prioritised actions with RED/YELLOW/GREEN priority]
+pip install weasyprint
 ```
 
----
+### 4b — Generate the report
+Write a wrapper script in the scratch directory and run it:
+```python
+import json, sys, os
+# Use the absolute path to this skill's scripts/ directory
+# (find it in the skill resources list in your system prompt)
+skill_scripts = r"<ABSOLUTE_PATH_TO_SKILL_SCRIPTS_DIR>"
+sys.path.insert(0, skill_scripts)
+from generate_html_report import generate_pdf_report
 
-## Step 3B — Match Rate Only (Scenario 2, option 2)
+with open("ltvr_data.json", "r", encoding="utf-8") as f:
+    data = json.load(f)
 
-Same layout as Step 3A. Do NOT include any sign-off counts or approval statistics.
+pdf_path, html_path = generate_pdf_report(data)
 
----
-
-## Step 3C — Sign-Off Status Only (Scenario 2, option 1)
-
-```
-LTVR Sign-Off Dashboard | {filename} | {today}
------------------------------------------------------
-Total Tests    {total_rows}
-Approved       {total_approved} ({a_pct}%)
-Rejected       {total_rejected} ({r_pct}%)
-Re-check       {total_recheck} ({rc_pct}%)
-[1 line only] {total_equal} matching - {total_missing} missing - {total_volume} work items
------------------------------------------------------
-STREAM SIGN-OFF BREAKDOWN
-| Stream | Total | Approved | Rejected | Re-check | Sign-Off % |
------------------------------------------------------
-RECOMMENDATIONS
-[Actions focused on approval gaps and re-check resolution]
+if pdf_path and os.path.exists(pdf_path):
+    print(f"PDF:{pdf_path}")
+else:
+    print(f"HTML:{html_path}")
 ```
 
----
+Before running the wrapper, write the full parsed data dict to `ltvr_data.json` in the scratch directory.
 
-## Step 3D — Both Sign-Off + Match Rate (Scenario 2, option 3)
+### 4c — Confirm to the user
 
-```
-LTVR Migration Quality Dashboard | {filename} | {today}
------------------------------------------------------
-KPIs row 1: Overall Rate | Total Tests | Status | Data Volume
-KPIs row 2: Approved | Rejected | Re-check
-[1 line only] equal - missing - diff - volume
------------------------------------------------------
-| Stream | Tests | Pass(>=85%) | Fail | Rate% | Approved | Rejected | Re-check |
------------------------------------------------------
-KEY OBSERVATIONS | RECOMMENDATIONS
-```
+**If PDF succeeded:**
+> "Your dashboard report has been saved as **LTVR_Migration_Quality_Report.pdf** in your Downloads folder."
+
+**If PDF failed (weasyprint error or unavailable):**
+> "The PDF could not be generated on this system. Your report has been saved as **LTVR_Migration_Quality_Report.html** — open it in any browser and use **File → Print → Save as PDF** to export a PDF copy."
 
 ---
 
@@ -149,7 +189,7 @@ KEY OBSERVATIONS | RECOMMENDATIONS
 - **Data Volume** — summary.total_volume work items (use total_equal if volume=0)
 - **Overall Status** — HEALTHY (>=95%, 0 fails) | AT RISK (80-94%) | CRITICAL (<80% or >10 fails)
 - **Stream breakdown** — per stream: total tests, passing (>=85%), failing (<85%), match rate %
-- **Technical snapshot** — max 1 line: equal records, missing, differences
+- **Technical snapshot** — max 1 line in the upper deck (Key Metrics section): equal records, missing, differences
 - **Sign-off KPIs** — only when has_signoff=true AND user selected option 1 or 3
 
 Pass threshold: **85%** match rate (LTVR standard)
@@ -176,61 +216,3 @@ Pass threshold: **85%** match rate (LTVR standard)
    - Avoid: "WI(%)", "OOS:Src", "DIFF", raw field names, "reconciliation delta"
 
 6. **SIGNER NAMES** — never display signed_by values. Aggregate counts only.
-
----
-
-## Recommendations Logic
-
-| Condition | Priority | Business Recommendation |
-|---|---|---|
-| overall_rate < 80% | RED | "Immediate review required - match rate is below the 80% acceptable threshold" |
-| overall_rate 80-94% | YELLOW | "Match rate approaching threshold - investigate [worst stream] before sign-off" |
-| overall_rate >= 95% | GREEN | "Migration quality is healthy - proceed with sign-off review" |
-| fail_count > 0 | RED | "{fail_count} streams below 85% pass threshold - root cause analysis required" |
-| total_rejected > 0 | RED | "{total_rejected} tests rejected - must be resolved before go-live" |
-| total_recheck > 0 | YELLOW | "{total_recheck} tests pending re-check - update sign-off status" |
-| zero_data > 10% of total | BLUE | "{n} tests show no source data - confirm these are expected zero-data scenarios" |
-| deactivated > 0 | BLUE | "{n} deactivated/migrated tests in scope - consider excluding from active metrics" |
-
----
-
-## PDF Output & Saving the Dashboard
-
-After generating the dashboard content in this Space, always end with this block:
-
----
-
-### 📊 Open Interactive Dashboard (with PDF Download)
-
-The full interactive dashboard — including the **Download PDF** button — is available at:
-
-**[Open LTVR Dashboard](https://d73dca5etrial-dev-ltvf-approuter.cfapps.us10-003.hana.ondemand.com)**
-
-On the dashboard:
-1. Upload the same LTVR Excel file
-2. Click the **↓ PDF** button in the toolbar (next to the print icon)
-3. A formatted PDF downloads automatically — no print dialog needed
-
-### 💾 Save this Space content
-
-To save the Joule Space summary as a document:
-- Click **`...`** (three dots) at the top right of the Space → **Export** or **Share**
-- Or use the **`...`** next to any card → **Copy** to paste into Word / email
-
-### 📋 Copy dashboard data
-
-To copy the tables from this Space into a presentation or email:
-- Select the text in any card → Ctrl+C → paste into PowerPoint / Word / Outlook
-
----
-
----
-
-## Live API (no file - live SAP data)
-
-Base: https://ltvf-backend.cfapps.us10-003.hana.ondemand.com
-
-- GET /api/sap/fetch?system_tag=default  — live LTVR data -> LTVFParseResult
-- GET /api/results/{system_tag}          — historical results list
-- GET /api/results/{system_tag}/{date}   — result for YYYY-MM-DD
-
